@@ -91,4 +91,22 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    const moments = Moment.findMany(); // Gets latest 50
+    const names = moments.map(m => m.englishName).filter(Boolean);
+
+    // De-duplicate names if needed, though seeing multiple "Ray"s might be cool.
+    // Let's keep them as is for now.
+
+    return NextResponse.json({ names });
+  } catch (error) {
+    console.error("Error in GET /api/moments:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 
