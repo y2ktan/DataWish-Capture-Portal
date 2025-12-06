@@ -51,7 +51,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
-    const resultUrl = `${process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin}/result/${token}`;
+    if (!moment.qrCodeUrl) {
+      return NextResponse.json(
+        { error: "QR code not found for this moment." },
+        { status: 404 }
+      );
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
+    const qrCodeImageUrl = `${baseUrl}${moment.qrCodeUrl}`;
 
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
@@ -63,15 +71,12 @@ export async function POST(req: NextRequest, { params }: Params) {
           <p>Dear ${moment.englishName},</p>
           <p>Thank you for participating in our event! Your personalized photo with a Jing Si aphorism is ready.</p>
           <p><strong>Jing Si Aphorism:</strong> "${moment.aphorism}"</p>
-          <p>You can view and download your photo by clicking the link below or scanning the QR code:</p>
+          <p>Scan the QR code below to view and download your photo:</p>
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${resultUrl}" style="background-color: #005a9c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-              View Your Photo
-            </a>
+            <img src="${qrCodeImageUrl}" alt="QR Code" style="width: 256px; height: 256px; border: 1px solid #ddd; border-radius: 8px;" />
           </p>
-          <p style="font-size: 12px; color: #666;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            ${resultUrl}
+          <p style="font-size: 12px; color: #666; text-align: center;">
+            QR Code URL: <a href="${qrCodeImageUrl}">${qrCodeImageUrl}</a>
           </p>
         </div>
       `

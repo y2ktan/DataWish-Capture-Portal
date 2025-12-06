@@ -30,6 +30,7 @@ export function getDatabase(): Database.Database {
       email TEXT,
       rawImageDataUrl TEXT NOT NULL,
       photoAssetUrl TEXT NOT NULL,
+      qrCodeUrl TEXT,
       aphorism TEXT NOT NULL,
       downloadToken TEXT NOT NULL UNIQUE,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -39,6 +40,13 @@ export function getDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_downloadToken ON moments(downloadToken);
     CREATE INDEX IF NOT EXISTS idx_createdAt ON moments(createdAt);
   `);
+  
+  // Add qrCodeUrl column if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE moments ADD COLUMN qrCodeUrl TEXT`);
+  } catch {
+    // Column already exists, ignore
+  }
 
   return db;
 }
@@ -51,6 +59,7 @@ export interface MomentRow {
   email: string | null;
   rawImageDataUrl: string;
   photoAssetUrl: string;
+  qrCodeUrl: string | null;
   aphorism: string;
   downloadToken: string;
   createdAt: string;

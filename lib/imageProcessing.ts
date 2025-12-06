@@ -1,7 +1,8 @@
 import { getRandomAphorism } from "./aphorisms";
+import { saveImageFromDataUrl } from "./fileStorage";
 
 export interface ProcessedImageResult {
-  finalImageDataUrl: string;
+  finalImageUrl: string;
   aphorism: string;
 }
 
@@ -20,10 +21,17 @@ export async function processImageWithAphorism(
 ): Promise<ProcessedImageResult> {
   const aphorism = getRandomAphorism();
 
-  // TODO: Replace this stub logic with real AI processing + storage.
-  // For now, we simply reuse the raw image and attach an aphorism.
+  // Save raw image to file system
+  const rawImageUrl = saveImageFromDataUrl(rawImageDataUrl);
+
+  // TODO: Replace this stub logic with real AI processing.
+  // For now, we save the raw image and return its URL.
+  // In production, you would:
+  // 1. Process the image (background removal, compositing, text overlay)
+  // 2. Save the processed image
+  // 3. Return the processed image URL
   return {
-    finalImageDataUrl: rawImageDataUrl,
+    finalImageUrl: rawImageUrl,
     aphorism
   };
 }
