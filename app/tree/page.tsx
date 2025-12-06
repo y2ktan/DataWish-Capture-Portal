@@ -29,8 +29,8 @@ export default function TreePage() {
 
         // --- Init ---
         scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x010103, 0.02);
-        scene.background = new THREE.Color(0x010103);
+        scene.fog = new THREE.FogExp2(0x000205, 0.02); // Deep dark void fog
+        scene.background = new THREE.Color(0x000205); // Deep dark void background
 
         const isPortrait = width < height;
         const initialZ = isPortrait ? 80 : 60;
@@ -63,9 +63,19 @@ export default function TreePage() {
         moonLight.position.set(20, 50, -20);
         scene.add(moonLight);
 
-        const treeHeartLight = new THREE.PointLight(0x00ffff, 1.5, 60);
+        const treeHeartLight = new THREE.PointLight(0x00ffff, 2.0, 60); // Brighter heart
         treeHeartLight.position.set(0, 15, 0);
         scene.add(treeHeartLight);
+
+        // Spotlight for trunk - Very bright styling
+        const trunkSpotlight = new THREE.SpotLight(0xe0f7ff, 5);
+        trunkSpotlight.position.set(0, 50, 40);
+        trunkSpotlight.angle = Math.PI / 5;
+        trunkSpotlight.penumbra = 0.3;
+        trunkSpotlight.distance = 200;
+        trunkSpotlight.target.position.set(0, 15, 0);
+        scene.add(trunkSpotlight);
+        scene.add(trunkSpotlight.target);
 
         // --- Functions ---
         function createWater() {
@@ -86,13 +96,14 @@ export default function TreePage() {
             const treeGroup = new THREE.Group();
 
             // Material
+            // Material
             const trunkMaterial = new THREE.MeshStandardMaterial({
-                color: 0x88CCFF, // Icy silver-blue
-                emissive: 0x004488,
-                emissiveIntensity: 0.4,
-                roughness: 0.2, // Smoother
-                metalness: 0.6, // Slightly less metallic to reflect more diffuse light
-                bumpScale: 1
+                color: 0x66ccff, // Vibrant spiritual blue-cyan
+                emissive: 0x0066aa, // Deep energy glow
+                emissiveIntensity: 0.5,
+                roughness: 0.7, // Organic/Bark texture
+                metalness: 0.1, // Not metallic
+                flatShading: false,
             });
 
             // Helper to create a curved branch/trunk
@@ -170,9 +181,9 @@ export default function TreePage() {
             const posArray = new Float32Array(leavesCount * 3);
             const colorArray = new Float32Array(leavesCount * 3);
 
-            const colorCyan = new THREE.Color(0x00ffff);
-            const colorPurple = new THREE.Color(0xaa00ff);
-            const colorBlue = new THREE.Color(0x0055ff);
+            const colorCyan = new THREE.Color(0x66ffff); // Brighter cyan
+            const colorPurple = new THREE.Color(0xdd66ff); // Brighter purple
+            const colorBlue = new THREE.Color(0x6699ff); // Brighter blue
 
             for (let i = 0; i < leavesCount; i++) {
                 // Ellipsoid distribution
@@ -202,10 +213,10 @@ export default function TreePage() {
             leavesGeo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
             const leavesMat = new THREE.PointsMaterial({
-                size: 0.6,
+                size: 0.9, // Larger
                 vertexColors: true,
                 transparent: true,
-                opacity: 0.7,
+                opacity: 1.0, // Fully opaque (additive will make it glow)
                 blending: THREE.AdditiveBlending,
                 depthWrite: false
             });
@@ -419,6 +430,17 @@ export default function TreePage() {
                 }
             });
 
+            // Pulse the tree
+            const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
+            scene.traverse((obj) => {
+                if (obj instanceof THREE.Mesh && obj.material.name !== 'waterMat' && obj.material.emissive) {
+                    // Check if it's the trunk (blue-ish)
+                    if (obj.material.color.g > 0.5) {
+                        obj.material.emissiveIntensity = pulse;
+                    }
+                }
+            });
+
             if (controls) controls.update();
             renderer.render(scene, camera);
         }
@@ -457,7 +479,7 @@ export default function TreePage() {
     }, [name]);
 
     return (
-        <main className="w-full h-full min-h-[500px] flex-1 relative bg-[#000510] overflow-hidden rounded-2xl border-4 border-cyan-900/50 shadow-[0_0_30px_rgba(0,255,255,0.2)]">
+        <main className="w-full h-full min-h-[500px] flex-1 relative bg-[#000205] overflow-hidden rounded-2xl border-4 border-cyan-900/50 shadow-[0_0_30px_rgba(0,255,255,0.2)]">
             {loading && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-cyan-400 font-sans text-2xl z-50 animate-pulse text-center">
                     Summoning Spirit Tree...
