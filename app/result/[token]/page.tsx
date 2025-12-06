@@ -1,0 +1,285 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import QRCode from "qrcode";
+
+interface MomentData {
+  englishName: string;
+  chineseName?: string;
+  phoneNumber: string;
+  email?: string;
+  photoAssetUrl: string;
+  aphorism: string;
+  createdAt: string;
+}
+
+export default function ResultPage() {
+  const params = useParams<{ token: string }>();
+  const token = params.token;
+
+  const [data, setData] = useState<MomentData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/moments/${token}`);
+        if (!res.ok) {
+          const json = await res.json().catch(() => null);
+          throw new Error(json?.error || "Failed to load photo.");
+        }
+        const json = (await res.json()) as MomentData;
+        setData(json);
+
+        const url = `${window.location.origin}/result/${token}`;
+        setResultUrl(url);
+        const qr = await QRCode.toDataURL(url, {
+          margin: 1,
+          width: 256
+        });
+        setQrDataUrl(qr);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Unexpected error occurred.";
+        setError(message);
+      }
+    };
+    fetchData();
+  }, [token]);
+
+  const handleSendEmail = async () => {
+    if (!data?.email) {
+      setEmailError("No email address available.");
+      return;
+    }
+    setSendingEmail(true);
+    setEmailError(null);
+    try {
+      const res = await fetch(`/api/moments/${token}/email`, {
+        method: "POST"
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Failed to send email.");
+      }
+      setEmailSent(true);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to send email.";
+      setEmailError(message);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!data?.phoneNumber || !resultUrl) return;
+    // Remove any non-digit characters except + for international numbers
+    // If no + prefix, assume it's a local number and might need country code
+    let cleanPhone = data.phoneNumber.replace(/[^\d+]/g, "");
+    // If phone doesn't start with +, add it (assuming local format)
+    // Note: In production, you might want to add country code detection
+    if (!cleanPhone.startsWith("+")) {
+      // Remove leading zeros if present
+      cleanPhone = cleanPhone.replace(/^0+/, "");
+      // For now, we'll use as-is. User can manually add country code if needed
+    }
+    const message = encodeURIComponent(
+      `Hello! Here's your memorable moment from the Tzu Chi event. View and download your personalized photo: ${resultUrl}`
+    );
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${message}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
+  const copyUrlToClipboard = async () => {
+    if (!resultUrl) return;
+    try {
+      await navigator.clipboard.writeText(resultUrl);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error("Failed to copy URL:", err);
+    }
+  };
+
+  return (
+    <main className="flex flex-1 flex-col gap-4">
+      <header className="pt-2">
+        <h1 className="text-center text-2xl font-semibold text-tzuchiBlue">
+          Your Memorable Moment
+        </h1>
+        <p className="mt-1 text-center text-sm text-slate-600">
+          Scan the QR code or long-press the photo to save it to your device.
+        </p>
+      </header>
+
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {!error && !data && (
+        <section className="mt-2 flex flex-1 flex-col items-center justify-center rounded-xl bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-700">Loading your photo…</p>
+        </section>
+      )}
+
+      {data && (
+        <section className="mt-2 flex flex-1 flex-col gap-4 rounded-xl bg-white p-4 shadow-sm">
+          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black">
+            <img
+              src={data.photoAssetUrl}
+              alt="Processed memorable moment"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm text-slate-700">
+            <p className="font-medium">Jing Si Aphorism</p>
+            <p className="mt-1 italic">&ldquo;{data.aphorism}&rdquo;</p>
+          </div>
+
+          {qrDataUrl && resultUrl && (
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src={qrDataUrl}
+                alt="QR code to download photo"
+                className="h-40 w-40"
+              />
+              <p className="text-center text-xs text-slate-500">
+                Ask event staff to scan this QR code or take a screenshot of
+                it. It links directly to this page.
+              </p>
+              <div className="mt-2 w-full">
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={resultUrl}
+                    className="flex-1 bg-transparent text-xs text-slate-700 outline-none"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button
+                    onClick={copyUrlToClipboard}
+                    className="rounded px-2 py-1 text-xs text-slate-600 hover:bg-slate-200"
+                    title="Copy URL"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            {data.email && (
+              <div className="flex flex-col gap-2">
+                {emailSent ? (
+                  <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                    Email sent successfully to {data.email}!
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail}
+                      className="inline-flex items-center justify-center gap-2 rounded-md bg-tzuchiBlue px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+                    >
+                      {sendingEmail ? (
+                        <>
+                          <svg
+                            className="h-4 w-4 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="h-5 w-5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+                            />
+                          </svg>
+                          Send QR Code to Email
+                        </>
+                      )}
+                    </button>
+                    {emailError && (
+                      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {emailError}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {data.phoneNumber && resultUrl && (
+              <button
+                onClick={handleShareWhatsApp}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                >
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                </svg>
+                Send QR Code via WhatsApp
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}
+
+
