@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
+    "html5-qrcode": "^2.3.8",
     "next": "^14.2.33",
     "nodemailer": "^7.0.11",
     "qrcode": "^1.5.4",
