@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { useRouter } from "next/navigation";
 import "./qrcode.css";
 
 export default function ScanPage() {
+    const router = useRouter();
     const [scanResult, setScanResult] = useState<string | null>(null);
     const [data, setData] = useState<{ englishName: string; aphorism: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -136,6 +138,12 @@ export default function ScanPage() {
                             className="mt-6 w-full rounded-xl border-2 border-tzuchiBlue bg-transparent py-3 font-semibold text-tzuchiBlue hover:bg-blue-50 transition-colors active:scale-95"
                         >
                             Scan Another
+                        </button>
+                        <button
+                            onClick={() => router.push(`/tree?name=${encodeURIComponent(data.englishName)}`)}
+                            className="mt-4 w-full rounded-xl border-none bg-gradient-to-r from-cyan-600 to-blue-600 py-3 font-bold text-white shadow-lg hover:shadow-cyan-500/50 transition-all active:scale-95"
+                        >
+                            The Tree 🌳
                         </button>
                     </div>
                 )}
