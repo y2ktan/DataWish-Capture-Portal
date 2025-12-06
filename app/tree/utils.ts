@@ -19,7 +19,7 @@ export const COLORS = {
 };
 
 export const CONFIG = {
-    FOG_DENSITY: 0.019,
+    FOG_DENSITY: 0.018,
     CAMERA_FOV: 60,
     INITIAL_Z_PORTRAIT: 76,
     INITIAL_Z_LANDSCAPE: 56,
