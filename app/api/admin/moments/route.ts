@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
       : undefined;
 
     const results = Moment.findMany(query);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
 
     return NextResponse.json(
       results.map((m) => ({
@@ -41,7 +42,8 @@ export async function GET(req: NextRequest) {
         phoneNumber: m.phoneNumber,
         email: m.email,
         createdAt: m.createdAt,
-        downloadToken: m.downloadToken
+        downloadToken: m.downloadToken,
+        postUrl: `${baseUrl}/result/${m.downloadToken}`,
       }))
     );
   } catch (error) {

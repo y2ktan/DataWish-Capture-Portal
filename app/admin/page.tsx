@@ -10,6 +10,7 @@ interface AdminMomentRow {
   email?: string;
   createdAt: string;
   downloadToken: string;
+  postUrl: string; 
 }
 
 export default function AdminPage() {
@@ -54,7 +55,8 @@ export default function AdminPage() {
         const json = await res.json().catch(() => null);
         throw new Error(json?.error || "Failed to load records.");
       }
-      const json = (await res.json()) as AdminMomentRow[];
+      // The API is confirmed to return `postUrl`
+      const json = (await res.json()) as AdminMomentRow[]; 
       setRows(json);
     } catch (err) {
       const message =
@@ -108,6 +110,7 @@ export default function AdminPage() {
         throw new Error(json?.error || "Failed to update record.");
       }
       setRows((prev) =>
+        // Ensure we preserve the postUrl when updating
         prev.map((r) => (r.id === editing.id ? { ...r, ...editing } : r))
       );
       setEditing(null);
@@ -203,6 +206,7 @@ export default function AdminPage() {
           {rows.map((row) => (
             <li key={row.id} className="py-2">
               <div className="flex items-center justify-between gap-2">
+                {/* Clickable text area for editing */}
                 <div
                   className="flex-1 cursor-pointer text-sm"
                   onClick={() => setEditing(row)}
@@ -213,13 +217,25 @@ export default function AdminPage() {
                   </p>
                   <p className="text-xs text-slate-500">{row.phoneNumber}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(row.id)}
-                  className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Delete
-                </button>
+                
+                {/* Button Group: View Photo & Delete */}
+                <div className="flex gap-2"> 
+                    <a
+                      href={row.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md border border-tzuchiBlue/50 bg-tzuchiBlue/5 px-2 py-1 text-xs text-tzuchiBlue hover:bg-tzuchiBlue/10"
+                    >
+                      View Photo
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(row.id)}
+                      className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                </div>
               </div>
             </li>
           ))}
@@ -288,5 +304,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
-
