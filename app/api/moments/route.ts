@@ -48,17 +48,26 @@ export async function POST(req: NextRequest) {
 
     const processed = await processImageWithAphorism(imageDataUrl);
 
-    // In a real app, upload processed.finalImageDataUrl to cloud storage
-    // and store the resulting public URL instead of the data URL.
     const downloadToken = crypto.randomBytes(16).toString("hex");
+
+    // Save raw image to file system
+    const { saveImageFromDataUrl, saveQRCodeFromBuffer } = await import("@/lib/fileStorage");
+    const rawImageUrl = saveImageFromDataUrl(imageDataUrl);
+
+    // Generate and save QR code
+    const QRCode = await import("qrcode");
+    const resultUrl = `${req.nextUrl.origin}/result/${downloadToken}`;
+    const qrBuffer = await QRCode.toBuffer(resultUrl, { margin: 1, width: 256 });
+    const qrCodeUrl = saveQRCodeFromBuffer(qrBuffer);
 
     const moment = Moment.create({
       englishName,
       chineseName,
       phoneNumber,
       email,
-      rawImageDataUrl: imageDataUrl,
-      photoAssetUrl: processed.finalImageDataUrl,
+      rawImageDataUrl: rawImageUrl,
+      photoAssetUrl: processed.finalImageUrl,
+      qrCodeUrl,
       aphorism: processed.aphorism,
       downloadToken
     });

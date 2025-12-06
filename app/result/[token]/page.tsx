@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import QRCode from "qrcode";
 
 interface MomentData {
   englishName: string;
@@ -12,6 +11,7 @@ interface MomentData {
   phoneNumber: string;
   email?: string;
   photoAssetUrl: string;
+  qrCodeUrl?: string;
   aphorism: string;
   createdAt: string;
 }
@@ -22,7 +22,6 @@ export default function ResultPage() {
 
   const [data, setData] = useState<MomentData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -41,11 +40,6 @@ export default function ResultPage() {
 
         const url = `${window.location.origin}/result/${token}`;
         setResultUrl(url);
-        const qr = await QRCode.toDataURL(url, {
-          margin: 1,
-          width: 256
-        });
-        setQrDataUrl(qr);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Unexpected error occurred.";
@@ -81,29 +75,82 @@ export default function ResultPage() {
   };
 
   const handleShareWhatsApp = () => {
-    if (!data?.phoneNumber || !resultUrl) return;
-    // Remove any non-digit characters except + for international numbers
-    // If no + prefix, assume it's a local number and might need country code
-    let cleanPhone = data.phoneNumber.replace(/[^\d+]/g, "");
-    // If phone doesn't start with +, add it (assuming local format)
-    // Note: In production, you might want to add country code detection
-    if (!cleanPhone.startsWith("+")) {
-      // Remove leading zeros if present
-      cleanPhone = cleanPhone.replace(/^0+/, "");
-      // For now, we'll use as-is. User can manually add country code if needed
-    }
+    if (!data?.phoneNumber || !data?.qrCodeUrl) return;
+    // Clean phone: KEEP digits only, remove +
+    let cleanPhone = data.phoneNumber.replace(/\D/g, "");
+    // If Malaysian number starting with 0 → remove leading zeros
+    cleanPhone = cleanPhone.replace(/^0+/, "");
+    // Build full QR code URL
+    const qrCodeFullUrl = `${window.location.origin}${data.qrCodeUrl}`;
+    // Encode the message so the link becomes clickable
     const message = encodeURIComponent(
-      `Hello! Here's your memorable moment from the Tzu Chi event. View and download your personalized photo: ${resultUrl}`
+      `Hello! Here's your QR code for your memorable moment from the Tzu Chi event. View it here: ${qrCodeFullUrl}`
     );
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${message}`;
     window.open(whatsappUrl, "_blank");
   };
+  
 
   const copyUrlToClipboard = async () => {
-    if (!resultUrl) return;
+    if (!data?.qrCodeUrl) return;
+    try {
+      const qrCodeFullUrl = `${window.location.origin}${data.qrCodeUrl}`;
+      await navigator.clipboard.writeText(qrCodeFullUrl);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error("Failed to copy URL:", err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!data?.photoAssetUrl || !resultUrl) return;
+
+    const imageUrl = data.photoAssetUrl.startsWith("http")
+      ? data.photoAssetUrl
+      : `${window.location.origin}${data.photoAssetUrl}`;
+
+    // Use Web Share API if available (works on mobile devices with WhatsApp, Telegram, Instagram, Facebook, etc.)
+    if (navigator.share) {
+      try {
+        // Try sharing with file (for images)
+        if (navigator.canShare && navigator.canShare({ files: [] })) {
+          // Fetch image and convert to File for sharing
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], "memorable-moment.jpg", {
+            type: "image/jpeg"
+          });
+
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: "My Memorable Moment - Tzu Chi Event",
+              text: `Check out my memorable moment! "${data.aphorism}"`,
+              files: [file],
+              url: imageUrl
+            });
+            return;
+          }
+        }
+
+        // Fallback: Share URL and text
+        await navigator.share({
+          title: "My Memorable Moment - Tzu Chi Event",
+          text: `Check out my memorable moment from the Tzu Chi event! "${data.aphorism}"`,
+          url: imageUrl
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed, fall through to manual share
+        if ((err as Error).name !== "AbortError") {
+          console.error("Share failed:", err);
+        }
+      }
+    }
+
+    // Fallback: Copy URL to clipboard
     try {
       await navigator.clipboard.writeText(resultUrl);
-      // You could add a toast notification here
+      alert("Link copied to clipboard! You can now paste it in any app.");
     } catch (err) {
       console.error("Failed to copy URL:", err);
     }
@@ -136,7 +183,11 @@ export default function ResultPage() {
         <section className="mt-2 flex flex-1 flex-col gap-4 rounded-xl bg-white p-4 shadow-sm">
           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black">
             <img
-              src={data.photoAssetUrl}
+              src={
+                data.photoAssetUrl.startsWith("http")
+                  ? data.photoAssetUrl
+                  : `${window.location.origin}${data.photoAssetUrl}`
+              }
               alt="Processed memorable moment"
               className="h-full w-full object-cover"
             />
@@ -146,10 +197,10 @@ export default function ResultPage() {
             <p className="mt-1 italic">&ldquo;{data.aphorism}&rdquo;</p>
           </div>
 
-          {qrDataUrl && resultUrl && (
+          {data.qrCodeUrl && (
             <div className="flex flex-col items-center gap-2">
               <img
-                src={qrDataUrl}
+                src={data.qrCodeUrl}
                 alt="QR code to download photo"
                 className="h-40 w-40"
               />
@@ -162,7 +213,7 @@ export default function ResultPage() {
                   <input
                     type="text"
                     readOnly
-                    value={resultUrl}
+                    value={`${window.location.origin}${data.qrCodeUrl}`}
                     className="flex-1 bg-transparent text-xs text-slate-700 outline-none"
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />
@@ -259,7 +310,7 @@ export default function ResultPage() {
               </div>
             )}
 
-            {data.phoneNumber && resultUrl && (
+            {data.phoneNumber && data.qrCodeUrl && (
               <button
                 onClick={handleShareWhatsApp}
                 className="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
@@ -273,6 +324,29 @@ export default function ResultPage() {
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                 </svg>
                 Send QR Code via WhatsApp
+              </button>
+            )}
+
+            {data.photoAssetUrl && resultUrl && (
+              <button
+                onClick={handleShare}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.935-2.186 2.25 2.25 0 00-3.935 2.186z"
+                  />
+                </svg>
+                Share Image
               </button>
             )}
           </div>

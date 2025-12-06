@@ -33,6 +33,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       phoneNumber: moment.phoneNumber,
       email: moment.email,
       photoAssetUrl: moment.photoAssetUrl,
+      qrCodeUrl: moment.qrCodeUrl,
       aphorism: moment.aphorism,
       createdAt: moment.createdAt
     });

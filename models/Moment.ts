@@ -7,6 +7,7 @@ export interface MomentInput {
   email?: string;
   rawImageDataUrl: string;
   photoAssetUrl: string;
+  qrCodeUrl?: string;
   aphorism: string;
   downloadToken: string;
 }
@@ -14,9 +15,45 @@ export interface MomentInput {
 export class Moment {
   static create(input: MomentInput): MomentRow {
     const db = getDatabase();
+    
+    // Find and delete old entry with same phone number (including its image files)
+    const oldMoment = db.prepare("SELECT * FROM moments WHERE phoneNumber = ?").get(input.phoneNumber) as MomentRow | undefined;
+    if (oldMoment) {
+      // Delete old image files
+      const fs = require("fs");
+      const path = require("path");
+      const uploadsDir = path.join(process.cwd(), "public");
+      
+      try {
+        if (oldMoment.rawImageDataUrl?.startsWith("/uploads/")) {
+          const rawFilePath = path.join(uploadsDir, oldMoment.rawImageDataUrl);
+          if (fs.existsSync(rawFilePath)) {
+            fs.unlinkSync(rawFilePath);
+          }
+        }
+        if (oldMoment.photoAssetUrl?.startsWith("/uploads/") && oldMoment.photoAssetUrl !== oldMoment.rawImageDataUrl) {
+          const photoFilePath = path.join(uploadsDir, oldMoment.photoAssetUrl);
+          if (fs.existsSync(photoFilePath)) {
+            fs.unlinkSync(photoFilePath);
+          }
+        }
+        if (oldMoment.qrCodeUrl?.startsWith("/uploads/")) {
+          const qrFilePath = path.join(uploadsDir, oldMoment.qrCodeUrl);
+          if (fs.existsSync(qrFilePath)) {
+            fs.unlinkSync(qrFilePath);
+          }
+        }
+      } catch (fileError) {
+        console.error("Error deleting old image files:", fileError);
+      }
+      
+      // Delete old database entry
+      db.prepare("DELETE FROM moments WHERE phoneNumber = ?").run(input.phoneNumber);
+    }
+    
     const stmt = db.prepare(`
-      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, aphorism, downloadToken)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       input.englishName,
@@ -25,6 +62,7 @@ export class Moment {
       input.email || null,
       input.rawImageDataUrl,
       input.photoAssetUrl,
+      input.qrCodeUrl || null,
       input.aphorism,
       input.downloadToken
     );
@@ -101,10 +139,23 @@ export class Moment {
     return this.findOneById(id);
   }
 
-  static deleteById(id: number): boolean {
+  static deleteById(id: number): { deleted: boolean; rawImagePath?: string; photoAssetPath?: string; qrCodePath?: string } {
     const db = getDatabase();
+    
+    // Get file paths before deleting
+    const moment = this.findOneById(id);
+    const rawImagePath = moment?.rawImageDataUrl;
+    const photoAssetPath = moment?.photoAssetUrl;
+    const qrCodePath = moment?.qrCodeUrl;
+    
     const stmt = db.prepare("DELETE FROM moments WHERE id = ?");
     const result = stmt.run(id);
-    return result.changes > 0;
+    
+    return {
+      deleted: result.changes > 0,
+      rawImagePath: rawImagePath?.startsWith("/uploads/") ? rawImagePath : undefined,
+      photoAssetPath: photoAssetPath?.startsWith("/uploads/") ? photoAssetPath : undefined,
+      qrCodePath: qrCodePath?.startsWith("/uploads/") ? qrCodePath : undefined
+    };
   }
 }

@@ -116,9 +116,40 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    const deleted = Moment.deleteById(Number(id));
-    if (!deleted) {
+    const result = Moment.deleteById(Number(id));
+    if (!result.deleted) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Delete image files and QR code
+    if (result.rawImagePath || result.photoAssetPath || result.qrCodePath) {
+      const fs = await import("fs");
+      const path = await import("path");
+      const uploadsDir = path.join(process.cwd(), "public");
+      
+      try {
+        if (result.rawImagePath) {
+          const rawFilePath = path.join(uploadsDir, result.rawImagePath);
+          if (fs.existsSync(rawFilePath)) {
+            fs.unlinkSync(rawFilePath);
+          }
+        }
+        if (result.photoAssetPath && result.photoAssetPath !== result.rawImagePath) {
+          const photoFilePath = path.join(uploadsDir, result.photoAssetPath);
+          if (fs.existsSync(photoFilePath)) {
+            fs.unlinkSync(photoFilePath);
+          }
+        }
+        if (result.qrCodePath) {
+          const qrFilePath = path.join(uploadsDir, result.qrCodePath);
+          if (fs.existsSync(qrFilePath)) {
+            fs.unlinkSync(qrFilePath);
+          }
+        }
+      } catch (fileError) {
+        console.error("Error deleting files:", fileError);
+        // Continue even if file deletion fails
+      }
     }
 
     return NextResponse.json({ success: true });
