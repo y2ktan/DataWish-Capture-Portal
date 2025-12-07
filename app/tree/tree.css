@@ -99,3 +99,58 @@
     pointer-events: none;
     overflow: hidden;
 }
+
+/* Fullscreen Button */
+.fullscreen-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 50;
+}
+
+/* Portrait Layout Adjustments */
+@media (orientation: portrait) {
+    .tree-container {
+        border-radius: 0;
+        border: none;
+        min-height: 100vh;
+    }
+
+    .back-button {
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .fullscreen-button {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .loading-message {
+        font-size: 1.25rem;
+        padding: 0 1rem;
+    }
+
+    .firefly-label {
+        font-size: 11px;
+    }
+}
+
+/* Small screens (mobile) */
+@media (max-width: 640px) {
+    .back-button {
+        padding: 0.35rem 0.7rem;
+        font-size: 0.75rem;
+    }
+
+    .fullscreen-button {
+        padding: 0.6rem !important;
+    }
+
+    .fullscreen-button svg {
+        width: 20px !important;
+        height: 20px !important;
+    }
+}
