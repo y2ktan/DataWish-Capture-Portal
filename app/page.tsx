@@ -47,6 +47,10 @@ export default function HomePage() {
   const lastTouchDistRef = useRef(0);
   const [, forceUpdate] = useState(0); // For triggering re-render when needed
 
+  // Orientation state
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [manualRotation, setManualRotation] = useState(0); // 0, 90, 180, 270 degrees
+
   // Zoom and pan constants
   const MIN_ZOOM = 1;
   const MAX_ZOOM = 4;
@@ -235,6 +239,55 @@ export default function HomePage() {
     isPanningRef.current = false;
   }, []);
 
+  // Manual rotation toggle (for when auto-rotate is disabled)
+  const handleManualRotate = useCallback(() => {
+    setManualRotation((prev) => (prev + 90) % 360);
+  }, []);
+
+  // Get effective rotation (combines device orientation with manual rotation)
+  const getEffectiveRotation = useCallback(() => {
+    return manualRotation;
+  }, [manualRotation]);
+
+  // Check if currently in landscape mode (either by device or manual rotation)
+  const isLandscape = useCallback(() => {
+    return orientation === "landscape" || manualRotation === 90 || manualRotation === 270;
+  }, [orientation, manualRotation]);
+
+  // Orientation detection effect
+  useEffect(() => {
+    // Detect initial orientation
+    const checkOrientation = () => {
+      if (typeof window !== "undefined") {
+        const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+        setOrientation(isPortrait ? "portrait" : "landscape");
+      }
+    };
+
+    checkOrientation();
+
+    // Listen for orientation changes using matchMedia
+    const mediaQuery = window.matchMedia("(orientation: portrait)");
+    const handleOrientationChange = (e: MediaQueryListEvent) => {
+      setOrientation(e.matches ? "portrait" : "landscape");
+      // Reset manual rotation when device orientation changes
+      setManualRotation(0);
+    };
+
+    mediaQuery.addEventListener("change", handleOrientationChange);
+
+    // Also listen for resize as a fallback
+    const handleResize = () => {
+      checkOrientation();
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleOrientationChange);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   // Setup and cleanup event listeners for camera controls
   useEffect(() => {
     const container = containerRef.current;
@@ -297,18 +350,45 @@ export default function HomePage() {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const width = video.videoWidth;
-    const height = video.videoHeight;
-    if (!width || !height) return;
-    canvas.width = width;
-    canvas.height = height;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    if (!videoWidth || !videoHeight) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.drawImage(video, 0, 0, width, height);
+
+    const rotation = getEffectiveRotation();
+    const needsRotation = rotation === 90 || rotation === 270;
+
+    // Set canvas dimensions based on rotation
+    if (needsRotation) {
+      // Swap dimensions for 90/270 degree rotation (landscape output)
+      canvas.width = videoHeight;
+      canvas.height = videoWidth;
+    } else {
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+    }
+
+    // Apply rotation transformation for correct orientation output
+    ctx.save();
+    if (rotation !== 0) {
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      if (needsRotation) {
+        ctx.drawImage(video, -videoWidth / 2, -videoHeight / 2, videoWidth, videoHeight);
+      } else {
+        ctx.drawImage(video, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+      }
+    } else {
+      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+    }
+    ctx.restore();
+
     const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
     setCapturedDataUrl(dataUrl);
     setStep("review");
-  }, []);
+  }, [getEffectiveRotation]);
 
   const handleRecapture = () => {
     setCapturedDataUrl(null);
@@ -436,22 +516,34 @@ export default function HomePage() {
 
       {step === "capture" && (
         <section className="mt-2 flex flex-1 flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-600">
-            Center yourself in the frame, then tap &quot;Capture&quot;.
-            <span className="block text-xs text-slate-400 mt-1">
-              Pinch or scroll to zoom • Shift+drag to pan
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-600">
+              Center yourself in the frame, then tap &quot;Capture&quot;.
+              <span className="block text-xs text-slate-400 mt-1">
+                Pinch or scroll to zoom • Shift+drag to pan
+              </span>
+            </p>
+            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+              {isLandscape() ? "Landscape" : "Portrait"}
             </span>
-          </p>
+          </div>
           <div 
             ref={containerRef}
-            className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black touch-none"
+            className={`relative w-full overflow-hidden rounded-lg bg-black touch-none transition-all duration-300 ${
+              isLandscape() ? "aspect-[16/9]" : "aspect-[3/4]"
+            }`}
           >
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              className="h-full w-full object-cover transition-transform duration-75"
-              style={{ transformOrigin: "center center" }}
+              className={`h-full w-full transition-transform duration-75 ${
+                isLandscape() ? "object-contain" : "object-cover"
+              }`}
+              style={{ 
+                transformOrigin: "center center",
+                transform: `rotate(${manualRotation}deg) scale(${zoomRef.current}) translateX(${panXRef.current}px)`
+              }}
             />
           </div>
           <canvas ref={canvasRef} className="hidden" />
@@ -465,9 +557,9 @@ export default function HomePage() {
             </button>
             <button
               type="button"
-              onClick={handleSwitchCamera}
+              onClick={handleManualRotate}
               className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-              title="Switch camera"
+              title="Rotate 90°"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -480,9 +572,24 @@ export default function HomePage() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
                 />
               </svg>
+            </button>
+            <button
+              type="button"
+              onClick={handleSwitchCamera}
+              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+              title="Switch camera"
+            >
+            <svg width="24px" height="24px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <g>
+                    <path fill="none" d="M0 0h24v24H0z"/>
+                    <path d="M9.828 5l-2 2H4v12h16V7h-3.828l-2-2H9.828zM9 3h6l2 2h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4l2-2zm.64 4.53a5.5 5.5 0 0 1 6.187 8.92L13.75 12.6h1.749l.001-.1a3.5 3.5 0 0 0-4.928-3.196L9.64 7.53zm4.677 9.96a5.5 5.5 0 0 1-6.18-8.905L10.25 12.5H8.5a3.5 3.5 0 0 0 4.886 3.215l.931 1.774z"/>
+                </g>
+            </svg>
+
+
             </button>
             <button
               type="button"
@@ -501,11 +608,13 @@ export default function HomePage() {
             Review your photo. If you&apos;re happy, proceed to personalize and
             generate your QR code.
           </p>
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black">
+          <div className={`relative w-full overflow-hidden rounded-lg bg-black ${
+            isLandscape() ? "aspect-[16/9]" : "aspect-[3/4]"
+          }`}>
             <img
               src={capturedDataUrl}
               alt="Captured preview"
-              className="h-full w-full object-cover"
+              className={`h-full w-full ${isLandscape() ? "object-contain" : "object-cover"}`}
             />
           </div>
           <div className="mt-2 flex justify-between gap-2">
