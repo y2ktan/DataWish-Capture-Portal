@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
 import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars } from "./utils";
+import ToggleFullScreen from "./toggleFullScreen";
 
 export default function TreePage() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -13,6 +14,7 @@ export default function TreePage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const name = searchParams.get("name");
+    const pathname = usePathname();
     const [loading, setLoading] = useState(true);
     const [showReleaseButton, setShowReleaseButton] = useState(!!name);
     const spawnRef = useRef<(n: string) => void>(() => { });
@@ -253,6 +255,8 @@ export default function TreePage() {
                     ← Back
                 </button>
             )}
+
+            <ToggleFullScreen containerRef={containerRef} rendererRef={rendererRef} cameraRef={cameraRef} dimensionsRef={dimensionsRef} pathname={pathname} name={name} />
 
             {showReleaseButton && !loading && (
                 <div className="absolute inset-0 z-40 flex items-end justify-center pb-20 pointer-events-none">
