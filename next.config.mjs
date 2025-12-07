@@ -10,13 +10,14 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Mark better-sqlite3 as external for server-side only
-      config.externals.push("better-sqlite3");
+      // Mark native modules as external for server-side only
+      config.externals.push("better-sqlite3", "sharp", "@imgly/background-removal-node");
     }
     return config;
+  },
+  experimental: {
+    serverComponentsExternalPackages: ["sharp", "@imgly/background-removal-node"]
   }
 };
 
 export default nextConfig;
-
-
