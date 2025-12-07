@@ -1,0 +1,69 @@
+/* html5-qrcode library overrides */
+
+/* Start Scanning + Stop Scanning + Request permissions buttons */
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop,
+#html5-qrcode-button-camera-permission {
+    background-color: #005a9c !important;
+    /* tzuchiBlue */
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    margin-top: 10px !important;
+    cursor: pointer !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+}
+
+/* "Scan an Image File" / "Scan using camera directly" link - look like secondary button (link) */
+#html5-qrcode-anchor-scan-type-change {
+    background-color: transparent !important;
+    color: #005a9c !important;
+    /* tzuchiBlue */
+    font-weight: 500 !important;
+    text-decoration: underline !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    display: inline-block !important;
+    margin-top: 15px !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+}
+
+
+/* Center the icons inside the reader */
+#reader img {
+    /* display: block !important;  <-- Removed to prevent forcing hidden icons to show */
+    display: block;
+    /* Use normal block so it can be hidden by library */
+    margin: 0 auto 10px auto !important;
+}
+
+/* Style the "Choose Image" file input button */
+#reader input[type="file"]::file-selector-button,
+#reader input[type="file"]::-webkit-file-upload-button {
+    background-color: #005a9c !important;
+    /* tzuchiBlue */
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    margin-right: 10px !important;
+}
+
+
+
+/* Hide "Scan an Image File" link when "Stop Scanning" button is visible (active scanning) */
+/* We check if the Stop button does NOT have 'display: none' */
+#reader:has(#html5-qrcode-button-camera-stop:not([style*="display: none"])) #html5-qrcode-anchor-scan-type-change {
+    display: none !important;
+}
+
+/* Hide the "i" info icon button */
+#reader img[alt="Info icon"] {
+    display: none !important;
+}

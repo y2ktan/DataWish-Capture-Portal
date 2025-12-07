@@ -13,6 +13,11 @@ A Next.js web application that captures user photos at events, processes them wi
 - **AI Processing**: Background replacement with themed assets and Jing Si aphorism overlay
 - **QR Code Generation**: Unique download links via QR codes
 - **Email Delivery**: Send QR code and photo link directly to user's email address
+- **QR Scanner**: Scan QR codes to view moments and navigate to the Spirit Tree
+- **Spirit Tree Visualization**: Interactive 3D tree with firefly animations
+  - Each firefly represents a captured moment
+  - Real-time data from database displayed as floating fireflies
+  - "Release" button for new moments to join the tree
 - **Admin Panel**: Password-protected management interface at `/admin`
   - Search moments by name or phone number
   - Edit user information
@@ -189,9 +194,22 @@ The image processing pipeline in `lib/imageProcessing.ts` is currently a stub. R
 
 ## Technology Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 14 (App Router) or later
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
+- **3D Graphics**: Three.js (Spirit Tree visualization)
+- **QR Code Scanning**: html5-qrcode
+- **QR Code Generation**: qrcode
 - **Database**: SQLite (better-sqlite3)
 - **Email**: Nodemailer
-- **QR Codes**: qrcode
+
+
+---
+1. QR scanning page
+http://localhost:3000/scan
+
+2. Spirit Tree page FOR Projection (All Fireflies from database)
+http://localhost:3000/tree
+
+3. Spirit Tree page from QR scanning page (New Firefly from QR code)
+http://localhost:3000/tree?name=Ray
