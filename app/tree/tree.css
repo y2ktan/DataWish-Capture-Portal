@@ -72,16 +72,17 @@
 /* Firefly Label */
 .firefly-label {
     position: absolute;
-    color: #fff;
+    color: #00ffff;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
     user-select: none;
-    text-shadow: 0 0 4px #00ffff, 0 0 8px #00ffff;
+    text-shadow: 0 0 8px #00ffff, 0 0 16px #0099ff, 0 0 24px #00ccff;
     pointer-events: none;
     white-space: nowrap;
-    opacity: 0.9;
-    transition: opacity 0.3s;
+    opacity: 1;
+    transition: opacity 0.2s;
+    letter-spacing: 0.5px;
 }
 
 /* Canvas Container */

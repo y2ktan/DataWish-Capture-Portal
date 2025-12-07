@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
 import { useSearchParams, useRouter } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars } from "./utils";
 
 export default function TreePage() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -15,10 +15,10 @@ export default function TreePage() {
     const name = searchParams.get("name");
     const [loading, setLoading] = useState(true);
     const [showReleaseButton, setShowReleaseButton] = useState(!!name);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const spawnRef = useRef<(n: string) => void>(() => { });
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+    const dimensionsRef = useRef({ width: 0, height: 0 });
 
     useEffect(() => {
         if (!containerRef.current || !labelsRef.current) return;
@@ -33,6 +33,7 @@ export default function TreePage() {
 
         let width = containerRef.current.clientWidth;
         let height = containerRef.current.clientHeight;
+        dimensionsRef.current = { width, height };
 
         // --- Init ---
         scene = new THREE.Scene();
@@ -87,21 +88,22 @@ export default function TreePage() {
                 state: 'FLYING',
                 target: new THREE.Vector3(),
                 timer: 0,
-                speed: 6 + Math.random() * 6
+                speed: 8 + Math.random() * 6
             };
             fireflies.push(ff);
             setRandomFlightTarget(ff);
         };
 
+        const updateRenderer = (w: number, h: number) => {
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            dimensionsRef.current = { width: w, height: h };
+        };
+
         const handleResize = () => {
             if (!containerRef.current) return;
-            const newWidth = containerRef.current.clientWidth;
-            const newHeight = containerRef.current.clientHeight;
-            camera.aspect = newWidth / newHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(newWidth, newHeight);
-            width = newWidth;
-            height = newHeight;
+            updateRenderer(containerRef.current.clientWidth, containerRef.current.clientHeight);
         };
 
         const animate = () => {
@@ -157,15 +159,13 @@ export default function TreePage() {
                 tempV.y += 0.5;
                 tempV.project(camera);
 
-                const x = (tempV.x * .5 + .5) * width;
-                const y = (tempV.y * -.5 + .5) * height;
+                const x = (tempV.x * 0.5 + 0.5) * dimensionsRef.current.width;
+                const y = (tempV.y * -0.5 + 0.5) * dimensionsRef.current.height;
+                const isOffScreen = isNaN(x) || isNaN(y) || Math.abs(tempV.z) > 1 || x < -50 || x > dimensionsRef.current.width + 50 || y < -50 || y > dimensionsRef.current.height + 50;
 
-                if (isNaN(x) || isNaN(y) || Math.abs(tempV.z) > 1 || x < -50 || x > width + 50 || y < -50 || y > height + 50) {
-                    ff.label.style.opacity = '0';
-                } else {
-                    ff.label.style.opacity = '0.8';
-                    ff.label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
-                }
+                // Always show labels, increase opacity
+                ff.label.style.opacity = isOffScreen ? '0.4' : '1';
+                ff.label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
             });
 
             // Pulse the tree
@@ -195,30 +195,32 @@ export default function TreePage() {
             }
         });
 
-        // Expose spawn function
+        // Expose spawn function FIRST
         spawnRef.current = spawnFirefly;
 
         // Hide loading immediately - tree is ready to view
         setLoading(false);
 
-        // Fetch fireflies (async, doesn't block display)
-        fetch('/api/moments')
-            .then(res => res.json())
-            .then(data => {
-                const names = data.names || CONFIG.INITIAL_NAMES;
-                names.forEach((n: string) => {
-                    // Don't spawn the user's current firefly from the DB list
-                    // We will spawn it manually via the Release button
-                    if (n !== name) spawnFirefly(n);
-                });
-            })
-            .catch(err => {
-                console.error("Failed to fetch fireflies:", err);
-                // Fallback
-                CONFIG.INITIAL_NAMES.forEach(n => {
-                    if (n !== name) spawnFirefly(n);
-                });
-            });
+        // Fetch fireflies and listen for updates
+        const fetchFireflies = () => {
+            fetch('/api/moments')
+                .then(res => res.json())
+                .then(data => {
+                    const names = data.names || [];
+                    names.forEach((n: string) => {
+                        const alreadyExists = fireflies.some(ff => ff.label.textContent === n);
+                        if (n !== name && !alreadyExists) {
+                            spawnFirefly(n);
+                        }
+                    });
+                })
+                .catch(err => console.error("Failed to fetch fireflies:", err));
+        };
+
+        fetchFireflies();
+
+        // Poll for new fireflies every 5 seconds
+        const pollInterval = setInterval(fetchFireflies, 5000);
 
         handleResize();
 
@@ -229,55 +231,12 @@ export default function TreePage() {
 
         return () => {
             resizeObserver.disconnect();
+            clearInterval(pollInterval);
             cancelAnimationFrame(animationId);
             renderer.dispose();
             if (labelsRef.current) labelsRef.current.innerHTML = '';
         };
     }, [name]);
-
-    const handleFullscreen = async () => {
-        if (!containerRef.current) return;
-
-        try {
-            // Enter fullscreen
-            if (!document.fullscreenElement) {
-                await containerRef.current.requestFullscreen();
-                setIsFullscreen(true);
-
-                // Resize to 1080x1920 (portrait)
-                if (rendererRef.current && cameraRef.current) {
-                    rendererRef.current.setSize(1080, 1920);
-                    cameraRef.current.aspect = 1080 / 1920;
-                    cameraRef.current.updateProjectionMatrix();
-                }
-            } else {
-                document.exitFullscreen();
-                setIsFullscreen(false);
-            }
-        } catch (err) {
-            console.error('Fullscreen error:', err);
-        }
-    };
-
-    // Listen for fullscreen changes
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            if (!document.fullscreenElement) {
-                setIsFullscreen(false);
-                // Reset to container size when exiting fullscreen
-                if (containerRef.current && rendererRef.current && cameraRef.current) {
-                    const width = containerRef.current.clientWidth;
-                    const height = containerRef.current.clientHeight;
-                    rendererRef.current.setSize(width, height);
-                    cameraRef.current.aspect = width / height;
-                    cameraRef.current.updateProjectionMatrix();
-                }
-            }
-        };
-
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
 
     return (
         <main className="tree-container">
@@ -294,37 +253,6 @@ export default function TreePage() {
                     ← Back
                 </button>
             )}
-
-            {/* Fullscreen Button */}
-            <button
-                onClick={handleFullscreen}
-                className="fullscreen-button bg-cyan-900/40 hover:bg-cyan-800/60 p-3 rounded-xl shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all transform hover:scale-105 active:scale-95 border border-cyan-400/50 backdrop-blur-md"
-                title={isFullscreen ? "Exit Fullscreen (1080x1920)" : "Fullscreen (1080x1920)"}
-            >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-cyan-300"
-                >
-                    {!isFullscreen ? (
-                        // Expand icon
-                        <>
-                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                        </>
-                    ) : (
-                        // Compress icon
-                        <>
-                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                        </>
-                    )}
-                </svg>
-            </button>
 
             {showReleaseButton && !loading && (
                 <div className="absolute inset-0 z-40 flex items-end justify-center pb-20 pointer-events-none">
