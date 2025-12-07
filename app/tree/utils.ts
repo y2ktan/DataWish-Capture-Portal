@@ -4,7 +4,7 @@ export const COLORS = {
     FOG: 0x000205,
     BACKGROUND: 0x000205,
     AMBIENT_LIGHT: 0x446688,
-    MOON_LIGHT: 0xffffff,
+    MOON_LIGHT: 0xffffcc,
     HEART_LIGHT: 0x00ffff,
     TRUNK_SPOTLIGHT: 0xe0f7ff,
     WATER: 0x000c50,
@@ -24,10 +24,9 @@ export const CONFIG = {
     INITIAL_Z_PORTRAIT: 95,
     INITIAL_Z_LANDSCAPE: 65,
     ZOOMOUT_MAX_DISTANCE: 110,
-    TRUNC_COUNT: 9,
+    TRUNC_COUNT: 6,
     LEAVES_COUNT: 12000,
-    VINE_COUNT: 120,
-    INITIAL_NAMES: ['Navi', 'Tael', 'Lumina', 'Ray', 'Spark', 'Twinkle']
+    VINE_COUNT: 120
 };
 
 export function setupSceneLights(scene: THREE.Scene) {
@@ -102,6 +101,79 @@ export function createEveningBackground(scene: THREE.Scene) {
 
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
+
+    // Add moon
+    const moonGeo = new THREE.SphereGeometry(12, 32, 32);   /* first param: moon size */
+    const moonMat = new THREE.MeshBasicMaterial({
+        color: 0xffff99,
+        fog: false
+    });
+    const moon = new THREE.Mesh(moonGeo, moonMat);
+    moon.position.set(80, 150, -200);
+    moon.renderOrder = 1;
+    scene.add(moon);
+
+    // Add sparkling stars
+    const starCount = 800;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+    const starCol = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI * 0.6; // Upper hemisphere only
+        const r = 390;
+
+        starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        starPos[i * 3 + 1] = r * Math.cos(phi);
+        starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+        // Mix of white and cyan stars
+        if (Math.random() > 0.7) {
+            starCol[i * 3] = 0.1 + Math.random() * 0.9;
+            starCol[i * 3 + 1] = 0.9 + Math.random() * 0.1;
+            starCol[i * 3 + 2] = 1;
+        } else {
+            starCol[i * 3] = 0.8 + Math.random() * 0.2;
+            starCol[i * 3 + 1] = 0.8 + Math.random() * 0.2;
+            starCol[i * 3 + 2] = 1;
+        }
+    }
+
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3));
+
+    const starMat = new THREE.PointsMaterial({
+        size: 1.5,
+        vertexColors: true,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.95,
+        fog: false
+    });
+
+    const stars = new THREE.Points(starGeo, starMat);
+    stars.renderOrder = 0;
+    stars.userData.time = 0;
+    scene.add(stars);
+}
+
+export function updateStars(scene: THREE.Scene, time: number) {
+    scene.traverse((obj) => {
+        if (obj instanceof THREE.Points && obj.geometry.getAttribute('color')) {
+            const colors = obj.geometry.getAttribute('color') as THREE.BufferAttribute;
+            const colArray = colors.array as Float32Array;
+            
+            // Make stars twinkle
+            for (let i = 0; i < colArray.length / 3; i++) {
+                const twinkle = Math.sin(time * 2 + i) * 0.4 + 0.6;
+                colArray[i * 3] *= twinkle;
+                colArray[i * 3 + 1] *= twinkle;
+                colArray[i * 3 + 2] *= twinkle;
+            }
+            colors.needsUpdate = true;
+        }
+    });
 }
 
 export function createWater(scene: THREE.Scene) {
@@ -119,7 +191,7 @@ export function createWater(scene: THREE.Scene) {
     scene.add(water);
 
     // Add floating light particles above water
-    const particleCount = 9000; // Reduced count with better distribution
+    const particleCount = 8000; // Reduced count with better distribution
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
     const particleColors = new Float32Array(particleCount * 3);
@@ -147,7 +219,7 @@ export function createWater(scene: THREE.Scene) {
     particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
 
     const particleMat = new THREE.PointsMaterial({
-        size: 0.2,
+        size: 0.3,
         vertexColors: true,
         transparent: true,
         opacity: 0.95,
@@ -168,10 +240,38 @@ export function createWater(scene: THREE.Scene) {
 
 export function createBoat(scene: THREE.Scene) {
     const boatGroup = new THREE.Group();
+    const loader = new THREE.TextureLoader();
+    let woodMap: THREE.Texture | null = null;
+    
+    // Try AVIF first, fall back to JPG
+    loader.load(
+        '/assets/textures/wood_textures.avif',
+        (texture) => {
+            woodMap = texture;
+            woodMap.wrapS = woodMap.wrapT = THREE.RepeatWrapping;
+            woodMap.repeat.set(2, 2);
+        },
+        undefined,
+        (error) => {
+            console.warn('AVIF texture failed, trying JPG:', error);
+            // Fallback to JPG
+            loader.load(
+                '/assets/textures/wood_bark.jpg',
+                (texture) => {
+                    woodMap = texture;
+                    woodMap.wrapS = woodMap.wrapT = THREE.RepeatWrapping;
+                    woodMap.repeat.set(2, 2);
+                },
+                undefined,
+                (jpgError) => console.warn('JPG texture also failed:', jpgError)
+            );
+        }
+    );
 
     // Boat hull - using a stretched box for simplicity
     const hullGeo = new THREE.BoxGeometry(3, 0.8, 1.5);
     const hullMat = new THREE.MeshStandardMaterial({
+        map: woodMap || undefined,
         color: 0xb8956a, // Brown wood color
         emissive: 0xb8956a,
         emissiveIntensity: 0.3,
@@ -214,8 +314,8 @@ export function createBoat(scene: THREE.Scene) {
     mast.position.set(-0.5, 2.1, 0);
     boatGroup.add(mast);
 
-    // Scale the entire boat 50% bigger
-    boatGroup.scale.set(2, 2, 2);
+    // Scale the entire boat 30% bigger (2.6x scale)
+    boatGroup.scale.set(2.6, 2.6, 2.6);
 
     // Position boat on water near tree
     boatGroup.position.set(12, 0.3, 10);
@@ -224,17 +324,35 @@ export function createBoat(scene: THREE.Scene) {
     scene.add(boatGroup);
 }
 
-export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[]) {
-    const treeGroup = new THREE.Group();
+function createTexturedTrunkMaterial() {
+    const loader = new THREE.TextureLoader();
+    const woodColorMap = loader.load('/assets/textures/wood_bark.jpg', undefined, undefined, () => {});
+    const woodNormalMap = loader.load('/assets/textures/wood_textures.avif', undefined, undefined, () => {});
+    const woodRoughnessMap = loader.load('/assets/textures/wood_textures.avif', undefined, undefined, () => {});
 
-    const trunkMaterial = new THREE.MeshStandardMaterial({
+    [woodColorMap, woodNormalMap, woodRoughnessMap].forEach(tex => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(1.5, 2);
+    });
+
+    return new THREE.MeshStandardMaterial({
+        map: woodColorMap,
+        normalMap: woodNormalMap,
+        normalScale: new THREE.Vector2(0.8, 0.8),
+        roughnessMap: woodRoughnessMap,
         color: COLORS.TRUNK,
         emissive: COLORS.TRUNK_EMISSIVE,
-        emissiveIntensity: 1.1, // Much brighter to stay visible when zoomed out
+        emissiveIntensity: 1.1,
         roughness: 0.6,
         metalness: 0,
         flatShading: false,
     });
+}
+
+export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[]) {
+    const treeGroup = new THREE.Group();
+
+    const trunkMaterial = createTexturedTrunkMaterial();
 
     const createLimb = (points: THREE.Vector3[], radius: number) => {
         const curve = new THREE.CatmullRomCurve3(points);
@@ -267,14 +385,14 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     }
 
     // 2. Extra Roots
-    for (let i = 0; i < CONFIG.TRUNC_COUNT; i++) {
-        const angle = (i / CONFIG.TRUNC_COUNT) * Math.PI * 2 + 0.3;
-        const dist = 10 + Math.random() * 5;
+    for (let i = 0; i < CONFIG.TRUNC_COUNT * 2; i++) {
+        const angle = (i / (CONFIG.TRUNC_COUNT * 2)) * Math.PI * 2;
+        const dist = 15 + Math.random() * 12;
         const points = [];
         points.push(new THREE.Vector3(Math.cos(angle) * dist, -2, Math.sin(angle) * dist));
         points.push(new THREE.Vector3(Math.cos(angle) * (dist * 0.5), 5, Math.sin(angle) * (dist * 0.5)));
-        points.push(new THREE.Vector3(Math.cos(angle) * 4, 2, Math.sin(angle) * 4));
-        treeGroup.add(createLimb(points, 0.8));
+        points.push(new THREE.Vector3(Math.cos(angle) * 5, 2, Math.sin(angle) * 5));
+        treeGroup.add(createLimb(points, 0.7));
     }
 
     // 3. Canopy
@@ -312,7 +430,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         size: 0.8,
         vertexColors: true,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.9,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     });
@@ -442,33 +560,46 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
 
     // 1. Glow Aura 
     const glare = new THREE.Sprite(glareMat.clone());
-    glare.scale.set(4, 4, 4); // Increased to match body size
+    glare.scale.set(10, 10, 10); // Increased to match body size
+    glare.frustumCulled = false;
+    glare.renderOrder = 998;
     group.add(glare);
 
     // 2. Light Source
     const light = new THREE.PointLight(COLORS.FIREFLY_LIGHT, 0.6, 6);
+    light.frustumCulled = false;
+    light.renderOrder = 998;
     group.add(light);
 
     // 3. Physical Body
     const body = new THREE.Mesh(ffBodyGeo, ffBodyMat);
     // Orient body to align with Z/movement usually, but here we just rotate it flat
     body.rotation.x = Math.PI / 2;
+    body.frustumCulled = false;
+    body.renderOrder = 998;
     group.add(body);
 
     // 4. Wings
     const wingL = new THREE.Mesh(ffWingGeo, ffWingMat);
     wingL.position.set(-0.35, 0.2, 0);
     wingL.rotation.set(Math.PI / 2, 0, Math.PI / 6);
+    wingL.frustumCulled = false;
+    wingL.renderOrder = 998;
     group.add(wingL);
 
     const wingR = new THREE.Mesh(ffWingGeo, ffWingMat);
     wingR.position.set(0.35, 0.2, 0);
     wingR.rotation.set(Math.PI / 2, 0, -Math.PI / 6);
+    wingR.frustumCulled = false;
+    wingR.renderOrder = 998;
     group.add(wingR);
 
     const r = 20 + Math.random() * 20;
     const ang = Math.random() * Math.PI * 2;
     group.position.set(Math.cos(ang) * r, 10 + Math.random() * 20, Math.sin(ang) * r);
+    group.frustumCulled = false;
+    group.renderOrder = 998;
+
 
     return { group, glare, light, wingL, wingR };
 }
