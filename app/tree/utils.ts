@@ -7,7 +7,7 @@ export const COLORS = {
     MOON_LIGHT: 0xffffff,
     HEART_LIGHT: 0x00ffff,
     TRUNK_SPOTLIGHT: 0xe0f7ff,
-    WATER: 0x000a1a,
+    WATER: 0x000c50,
     TRUNK: 0x66ccff,
     TRUNK_EMISSIVE: 0x0066aa,
     LEAF_CYAN: 0x22eebb,
@@ -19,11 +19,11 @@ export const COLORS = {
 };
 
 export const CONFIG = {
-    FOG_DENSITY: 0.018,
+    FOG_DENSITY: 0.015,
     CAMERA_FOV: 60,
-    INITIAL_Z_PORTRAIT: 76,
-    INITIAL_Z_LANDSCAPE: 56,
-    ZOOMOUT_MAX_DISTANCE: 100,
+    INITIAL_Z_PORTRAIT: 95,
+    INITIAL_Z_LANDSCAPE: 65,
+    ZOOMOUT_MAX_DISTANCE: 110,
     TRUNC_COUNT: 9,
     LEAVES_COUNT: 12000,
     VINE_COUNT: 120,
@@ -52,6 +52,58 @@ export function setupSceneLights(scene: THREE.Scene) {
     scene.add(trunkSpotlight.target);
 }
 
+export function createEveningBackground(scene: THREE.Scene) {
+    // Create a large sphere for the background sky
+    const skyGeo = new THREE.SphereGeometry(400, 32, 32);
+
+    // Create gradient texture for evening sky
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    if (ctx) {
+        // Create vertical gradient from top to bottom
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+
+        // Evening sky gradient - simplified
+        // 🌌 SKY (Top)
+        gradient.addColorStop(0, '#000000ff');
+        gradient.addColorStop(0.149, '#000000ff');
+        gradient.addColorStop(0.150, '#0d0d4bff');
+        gradient.addColorStop(0.151, '#000000ff');
+        gradient.addColorStop(0.200, '#00001fff');
+        gradient.addColorStop(0.400, '#000012ff');
+        gradient.addColorStop(0.450, '#00001aff');
+        gradient.addColorStop(0.500, '#000028ff');
+        gradient.addColorStop(0.519, '#001433ff');
+        gradient.addColorStop(0.52, '#000c50');     // Deep midnight blue
+
+        // 🌅 MIDDLE (Transition)
+        gradient.addColorStop(0.53, '#002331');     // Dark teal
+        gradient.addColorStop(0.6, '#00BFFF');      // Deep sky blue
+        gradient.addColorStop(0.7, '#6b7ba8');      // Light blue-purple
+
+        // 🌄 HORIZON (Bottom)
+        gradient.addColorStop(0.85, '#4682B4');     // Steel blue
+        gradient.addColorStop(0.95, '#b8956a');     // Warm sunset
+        gradient.addColorStop(1, '#d4a574');        // Horizon glow
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const skyTexture = new THREE.CanvasTexture(canvas);
+    const skyMat = new THREE.MeshBasicMaterial({
+        map: skyTexture,
+        side: THREE.BackSide,
+        fog: false
+    });
+
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+}
+
 export function createWater(scene: THREE.Scene) {
     const waterGeo = new THREE.PlaneGeometry(300, 300);
     const waterMat = new THREE.MeshStandardMaterial({
@@ -59,12 +111,117 @@ export function createWater(scene: THREE.Scene) {
         roughness: 0.0,
         metalness: 0.9,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.95,
         name: 'waterMat'
     });
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.rotation.x = -Math.PI / 2;
     scene.add(water);
+
+    // Add floating light particles above water
+    const particleCount = 9000; // Reduced count with better distribution
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePos = new Float32Array(particleCount * 3);
+    const particleColors = new Float32Array(particleCount * 3);
+
+    const color1 = new THREE.Color(0x00ffff); // Cyan
+    const color2 = new THREE.Color(0x4488ff); // Blue
+    const color3 = new THREE.Color(0xaaffff); // Light cyan
+
+    for (let i = 0; i < particleCount; i++) {
+        // Spread particles across water surface
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 30 + Math.random() * 100;
+        particlePos[i * 3] = Math.cos(angle) * radius;
+        particlePos[i * 3 + 1] = 0.5 + Math.random() * 2; // Just above water
+        particlePos[i * 3 + 2] = Math.sin(angle) * radius;
+
+        // Random colors
+        const c = Math.random() < 0.5 ? color1 : (Math.random() < 0.7 ? color2 : color3);
+        particleColors[i * 3] = c.r;
+        particleColors[i * 3 + 1] = c.g;
+        particleColors[i * 3 + 2] = c.b;
+    }
+
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+    particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+    const particleMat = new THREE.PointsMaterial({
+        size: 0.2,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        sizeAttenuation: true
+    });
+
+    const particles = new THREE.Points(particleGeo, particleMat);
+    particles.frustumCulled = false;
+    scene.add(particles);
+    particles.renderOrder = 999;
+
+    // Add a small boat
+    createBoat(scene);
+}
+
+export function createBoat(scene: THREE.Scene) {
+    const boatGroup = new THREE.Group();
+
+    // Boat hull - using a stretched box for simplicity
+    const hullGeo = new THREE.BoxGeometry(3, 0.8, 1.5);
+    const hullMat = new THREE.MeshStandardMaterial({
+        color: 0xb8956a, // Brown wood color
+        emissive: 0xb8956a,
+        emissiveIntensity: 0.3,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    const hull = new THREE.Mesh(hullGeo, hullMat);
+    hull.position.y = 0.4;
+    boatGroup.add(hull);
+
+    // Boat bottom (pointed front)
+    const bottomGeo = new THREE.ConeGeometry(0.75, 1.5, 4);
+    const bottom = new THREE.Mesh(bottomGeo, hullMat);
+    bottom.rotation.z = Math.PI / 2;
+    bottom.rotation.y = Math.PI / 4;
+    bottom.position.set(1.5, 0.2, 0);
+    boatGroup.add(bottom);
+
+    // Seats
+    const seatGeo = new THREE.BoxGeometry(2.5, 0.15, 1.2);
+    const seatMat = new THREE.MeshStandardMaterial({
+        color: 0xA0522D,
+        emissive: 0xA0522D,
+        emissiveIntensity: 0.25,
+        roughness: 0.9
+    });
+    const seat1 = new THREE.Mesh(seatGeo, seatMat);
+    seat1.position.set(0, 0.85, 0);
+    boatGroup.add(seat1);
+
+    // Small mast
+    const mastGeo = new THREE.CylinderGeometry(0.08, 0.08, 2.5);
+    const mastMat = new THREE.MeshStandardMaterial({
+        color: 0xD2691E,
+        emissive: 0xD2691E,
+        emissiveIntensity: 0.2,
+        roughness: 0.7
+    });
+    const mast = new THREE.Mesh(mastGeo, mastMat);
+    mast.position.set(-0.5, 2.1, 0);
+    boatGroup.add(mast);
+
+    // Scale the entire boat 50% bigger
+    boatGroup.scale.set(2, 2, 2);
+
+    // Position boat on water near tree
+    boatGroup.position.set(12, 0.3, 10);
+    boatGroup.rotation.y = Math.PI / 6; // Slight angle
+
+    scene.add(boatGroup);
 }
 
 export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[]) {
@@ -73,9 +230,9 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     const trunkMaterial = new THREE.MeshStandardMaterial({
         color: COLORS.TRUNK,
         emissive: COLORS.TRUNK_EMISSIVE,
-        emissiveIntensity: 0.5,
-        roughness: 0.7,
-        metalness: 0.1,
+        emissiveIntensity: 1.1, // Much brighter to stay visible when zoomed out
+        roughness: 0.6,
+        metalness: 0,
         flatShading: false,
     });
 
@@ -130,11 +287,11 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     const c3 = new THREE.Color(COLORS.LEAF_BLUE);
 
     for (let i = 0; i < CONFIG.LEAVES_COUNT; i++) {
-        const r = Math.pow(Math.random(), 0.4) * 40;
+        const r = Math.pow(Math.random(), 0.4) * 50;
         const theta = Math.random() * Math.PI * 2;
         let x = Math.cos(theta) * r;
         let z = Math.sin(theta) * r;
-        let y = 40 + Math.cos((r / 40) * (Math.PI / 2)) * 15 - (Math.random() * 10);
+        let y = 40 + Math.cos((r / 50) * (Math.PI / 2)) * 32 - (Math.random() * 10);
 
         posArray[i * 3] = x;
         posArray[i * 3 + 1] = y;
@@ -152,10 +309,10 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     leavesGeo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
     const leavesMat = new THREE.PointsMaterial({
-        size: 0.9,
+        size: 0.8,
         vertexColors: true,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.95,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     });
@@ -166,7 +323,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     const vineMat = new THREE.LineBasicMaterial({
         color: COLORS.VINE,
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.35,
         blending: THREE.AdditiveBlending
     });
 
@@ -180,6 +337,9 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         ];
         treeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), vineMat));
     }
+
+    // Position the tree lower so trunk/vines are closer to bottom
+    treeGroup.position.y = -5;
 
     scene.add(treeGroup);
 }

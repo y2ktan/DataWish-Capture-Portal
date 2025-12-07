@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
 import { useSearchParams, useRouter } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget } from "./utils";
 
 export default function TreePage() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -15,7 +15,10 @@ export default function TreePage() {
     const name = searchParams.get("name");
     const [loading, setLoading] = useState(true);
     const [showReleaseButton, setShowReleaseButton] = useState(!!name);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const spawnRef = useRef<(n: string) => void>(() => { });
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
 
     useEffect(() => {
         if (!containerRef.current || !labelsRef.current) return;
@@ -34,7 +37,6 @@ export default function TreePage() {
         // --- Init ---
         scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(COLORS.FOG, CONFIG.FOG_DENSITY);
-        scene.background = new THREE.Color(COLORS.BACKGROUND);
 
         const isPortrait = width < height;
         const initialZ = isPortrait ? CONFIG.INITIAL_Z_PORTRAIT : CONFIG.INITIAL_Z_LANDSCAPE;
@@ -48,6 +50,9 @@ export default function TreePage() {
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
 
+        rendererRef.current = renderer;
+        cameraRef.current = camera;
+
         if (containerRef.current) {
             containerRef.current.innerHTML = '';
             containerRef.current.appendChild(renderer.domElement);
@@ -59,8 +64,7 @@ export default function TreePage() {
         controls.maxPolarAngle = Math.PI / 2 - 0.02;
         controls.minDistance = 10;
         controls.maxDistance = CONFIG.ZOOMOUT_MAX_DISTANCE;
-        controls.target.set(0, 26, 0);
-
+        controls.target.set(0, 28, 0);
 
 
         const spawnFirefly = (targetName: string) => {
@@ -176,6 +180,7 @@ export default function TreePage() {
 
         // --- Execution Flow ---
         setupSceneLights(scene);
+        createEveningBackground(scene);
         createWater(scene);
         createSpiritTree(scene, perchPoints);
 
@@ -193,7 +198,10 @@ export default function TreePage() {
         // Expose spawn function
         spawnRef.current = spawnFirefly;
 
-        // Fetch fireflies
+        // Hide loading immediately - tree is ready to view
+        setLoading(false);
+
+        // Fetch fireflies (async, doesn't block display)
         fetch('/api/moments')
             .then(res => res.json())
             .then(data => {
@@ -203,7 +211,6 @@ export default function TreePage() {
                     // We will spawn it manually via the Release button
                     if (n !== name) spawnFirefly(n);
                 });
-                setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch fireflies:", err);
@@ -211,7 +218,6 @@ export default function TreePage() {
                 CONFIG.INITIAL_NAMES.forEach(n => {
                     if (n !== name) spawnFirefly(n);
                 });
-                setLoading(false);
             });
 
         handleResize();
@@ -229,6 +235,50 @@ export default function TreePage() {
         };
     }, [name]);
 
+    const handleFullscreen = async () => {
+        if (!containerRef.current) return;
+
+        try {
+            // Enter fullscreen
+            if (!document.fullscreenElement) {
+                await containerRef.current.requestFullscreen();
+                setIsFullscreen(true);
+
+                // Resize to 1080x1920 (portrait)
+                if (rendererRef.current && cameraRef.current) {
+                    rendererRef.current.setSize(1080, 1920);
+                    cameraRef.current.aspect = 1080 / 1920;
+                    cameraRef.current.updateProjectionMatrix();
+                }
+            } else {
+                document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        } catch (err) {
+            console.error('Fullscreen error:', err);
+        }
+    };
+
+    // Listen for fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                setIsFullscreen(false);
+                // Reset to container size when exiting fullscreen
+                if (containerRef.current && rendererRef.current && cameraRef.current) {
+                    const width = containerRef.current.clientWidth;
+                    const height = containerRef.current.clientHeight;
+                    rendererRef.current.setSize(width, height);
+                    cameraRef.current.aspect = width / height;
+                    cameraRef.current.updateProjectionMatrix();
+                }
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     return (
         <main className="tree-container">
             {loading && (
@@ -244,6 +294,37 @@ export default function TreePage() {
                     ← Back
                 </button>
             )}
+
+            {/* Fullscreen Button */}
+            <button
+                onClick={handleFullscreen}
+                className="fullscreen-button bg-cyan-900/40 hover:bg-cyan-800/60 p-3 rounded-xl shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all transform hover:scale-105 active:scale-95 border border-cyan-400/50 backdrop-blur-md"
+                title={isFullscreen ? "Exit Fullscreen (1080x1920)" : "Fullscreen (1080x1920)"}
+            >
+                <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-cyan-300"
+                >
+                    {!isFullscreen ? (
+                        // Expand icon
+                        <>
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                        </>
+                    ) : (
+                        // Compress icon
+                        <>
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                        </>
+                    )}
+                </svg>
+            </button>
 
             {showReleaseButton && !loading && (
                 <div className="absolute inset-0 z-40 flex items-end justify-center pb-20 pointer-events-none">
