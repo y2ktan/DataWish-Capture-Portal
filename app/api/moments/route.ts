@@ -1,16 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Moment } from "@/models/Moment";
 import { processImageWithAphorism } from "@/lib/imageProcessing";
-import { rateLimit } from "../utils/rateLimit";
 import crypto from "crypto";
+
+// Rate limiting: 5 requests per minute per IP for image processing
+const WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS = 5;
+const buckets = new Map<string, { count: number; windowStart: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const bucket = buckets.get(ip);
+
+  if (!bucket) {
+    buckets.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (now - bucket.windowStart > WINDOW_MS) {
+    buckets.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (bucket.count >= MAX_REQUESTS) {
+    return false;
+  }
+
+  bucket.count += 1;
+  return true;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.ip ?? req.headers.get("x-forwarded-for") ?? "unknown";
-    const rl = rateLimit(`moments_post_${ip}`);
-    if (!rl.allowed) {
+    const forwarded = req.headers.get("x-forwarded-for");
+    const ip = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") ?? "unknown";
+    
+    if (!checkRateLimit(ip)) {
       return NextResponse.json(
-        { error: "Too many requests. Please slow down." },
+        { error: "Rate limit exceeded. Please try again later." },
         { status: 429 }
       );
     }
@@ -42,6 +69,26 @@ export async function POST(req: NextRequest) {
     if (!englishName || !phoneNumber || !imageDataUrl) {
       return NextResponse.json(
         { error: "englishName, phoneNumber and image are required." },
+        { status: 400 }
+      );
+    }
+
+    // Validate image data URL format and size
+    const dataUrlMatch = imageDataUrl.match(/^data:image\/(jpeg|png|jpg);base64,(.+)$/);
+    if (!dataUrlMatch) {
+      return NextResponse.json(
+        { error: "Invalid image format. Only JPEG and PNG are allowed." },
+        { status: 400 }
+      );
+    }
+
+    // Check file size (base64 is ~33% larger than binary, so 5MB binary ≈ 6.67MB base64)
+    const base64Data = dataUrlMatch[2];
+    const estimatedSize = (base64Data.length * 3) / 4;
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (estimatedSize > maxSize) {
+      return NextResponse.json(
+        { error: "Image too large. Maximum size is 5MB." },
         { status: 400 }
       );
     }
@@ -108,5 +155,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
-
