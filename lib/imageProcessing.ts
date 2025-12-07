@@ -71,37 +71,93 @@ async function compositeImage(
   aphorism: string
 ): Promise<Buffer> {
   const sharp = await getSharp();
-  
-  // Load and resize background to output dimensions
+
+  // 1. Process Background: Maintain aspect ratio and fill the square
   const background = sharp(backgroundPath).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
     fit: "cover",
     position: "center"
   });
 
-  // Resize subject to fit within the output dimensions while maintaining aspect ratio
+  // 2. Process Subject: Anchor to the bottom (south) to prevent floating
   const subjectResized = await sharp(subjectBuffer)
     .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
       fit: "contain",
+      position: "south", // Anchor person to the bottom edge
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     })
     .toBuffer();
 
-  // Create text overlay for aphorism
-  // Position text in the bottom 20% of the image
-  const textHeight = Math.floor(OUTPUT_HEIGHT * 0.15);
-  const textY = OUTPUT_HEIGHT - textHeight - 40;
-  const fontSize = 32;
-  const maxWidth = OUTPUT_WIDTH - 80;
+  // 3. Text Configuration
+  const fontSize = 40; // Slightly larger for better readability
+  const maxWidth = OUTPUT_WIDTH - 120;
+  const textYOffset = Math.floor(OUTPUT_HEIGHT * 0.15); // 15% from top
 
-  // Wrap text if too long
-  const words = aphorism.split(" ");
+  // 4. Wrap Text
+  const lines = wrapText(aphorism, maxWidth, fontSize);
+  const lineHeight = fontSize * 1.4;
+
+  // 5. Generate SVG with Drop Shadow (instead of black box)
+  const textElements = lines
+    .map((line, i) => {
+      const yPos = textYOffset + i * lineHeight;
+      return `
+        <text 
+          x="${OUTPUT_WIDTH / 2 + 2}" 
+          y="${yPos + 2}" 
+          font-family="Arial, sans-serif" 
+          font-size="${fontSize}" 
+          font-weight="bold"
+          fill="rgba(0,0,0,0.7)" 
+          text-anchor="middle"
+        >
+          ${escapeXml(line)}
+        </text>
+        <text 
+          x="${OUTPUT_WIDTH / 2}" 
+          y="${yPos}" 
+          font-family="Arial, sans-serif" 
+          font-size="${fontSize}" 
+          font-weight="bold"
+          fill="white" 
+          text-anchor="middle"
+        >
+          ${escapeXml(line)}
+        </text>`;
+    }).join("");
+
+  const svgOverlay = `
+    <svg width="${OUTPUT_WIDTH}" height="${OUTPUT_HEIGHT}">
+      ${textElements}
+    </svg>
+  `;
+
+  // 6. Composite Layers
+  return await background
+    .composite([
+      { 
+        input: subjectResized, 
+        gravity: "south" // Keep person at the bottom of the composite
+      },
+      { 
+        input: Buffer.from(svgOverlay), 
+        gravity: "northwest" 
+      }
+    ])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+/** * Helper to wrap text based on approximate width 
+ */
+function wrapText(text: string, maxWidth: number, fontSize: number): string[] {
+  const words = text.split(" ");
   const lines: string[] = [];
   let currentLine = "";
 
   for (const word of words) {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
-    // Approximate character width (rough estimate)
-    if (testLine.length * (fontSize * 0.6) > maxWidth) {
+    const charWidth = fontSize * 0.6; // Rough estimate for sans-serif
+    if (testLine.length * charWidth > maxWidth) {
       if (currentLine) lines.push(currentLine);
       currentLine = word;
     } else {
@@ -109,54 +165,7 @@ async function compositeImage(
     }
   }
   if (currentLine) lines.push(currentLine);
-
-  // Create SVG text overlay with semi-transparent backing
-  const lineHeight = fontSize * 1.4;
-  const totalTextHeight = lines.length * lineHeight;
-  const textStartY = textY + (textHeight - totalTextHeight) / 2;
-
-  const textElements = lines
-    .map(
-      (line, i) =>
-        `<text x="${OUTPUT_WIDTH / 2}" y="${textStartY + i * lineHeight + fontSize}" 
-          font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold"
-          fill="white" text-anchor="middle" 
-          stroke="black" stroke-width="2" paint-order="stroke">
-          ${escapeXml(line)}
-        </text>`
-    )
-    .join("");
-
-  const svgOverlay = `
-    <svg width="${OUTPUT_WIDTH}" height="${OUTPUT_HEIGHT}">
-      <defs>
-        <linearGradient id="textBg" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style="stop-color:rgba(0,0,0,0)"/>
-          <stop offset="30%" style="stop-color:rgba(0,0,0,0.5)"/>
-          <stop offset="100%" style="stop-color:rgba(0,0,0,0.7)"/>
-        </linearGradient>
-      </defs>
-      <rect x="0" y="${textY - 20}" width="${OUTPUT_WIDTH}" height="${textHeight + 60}" fill="url(#textBg)"/>
-      ${textElements}
-    </svg>
-  `;
-
-  // Composite all layers: background -> subject -> text overlay
-  const result = await background
-    .composite([
-      {
-        input: subjectResized,
-        gravity: "center"
-      },
-      {
-        input: Buffer.from(svgOverlay),
-        gravity: "northwest"
-      }
-    ])
-    .jpeg({ quality: 90 })
-    .toBuffer();
-
-  return result;
+  return lines;
 }
 
 /**
