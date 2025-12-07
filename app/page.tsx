@@ -38,26 +38,92 @@ export default function HomePage() {
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
+  const requestCameraPermission = useCallback(async (): Promise<boolean> => {
+    // Check if Permissions API is available
+    if (navigator.permissions) {
+      try {
+        const result = await navigator.permissions.query({ name: "camera" as PermissionName });
+        if (result.state === "granted") {
+          return true;
+        }
+        if (result.state === "prompt") {
+          // Permission will be requested when getUserMedia is called
+          return true;
+        }
+        // Permission denied
+        return false;
+      } catch {
+        // Permissions API not fully supported, proceed with getUserMedia
+        return true;
+      }
+    }
+    return true;
+  }, []);
+
   const startCamera = useCallback(
-    (mode: "user" | "environment") => {
+    async (mode: "user" | "environment") => {
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: mode } })
-        .then((mediaStream) => {
-          setStream(mediaStream);
-          if (videoRef.current) {
-            videoRef.current.srcObject = mediaStream;
+
+      // Check if mediaDevices is available (requires HTTPS on mobile)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError(
+          "Camera is not available. Please ensure you are using HTTPS and a supported browser."
+        );
+        return;
+      }
+
+      // Request camera permission
+      const hasPermission = await requestCameraPermission();
+      if (!hasPermission) {
+        setError(
+          "Camera permission was denied. Please allow camera access in your browser settings."
+        );
+        return;
+      }
+
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode }
+        });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      } catch (err) {
+        const error = err as Error;
+        if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+          setError(
+            "Camera permission was denied. Please allow camera access and try again."
+          );
+        } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+          setError(
+            "No camera found on this device."
+          );
+        } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+          setError(
+            "Camera is in use by another application. Please close other apps using the camera."
+          );
+        } else if (error.name === "OverconstrainedError") {
+          // Try again without facingMode constraint
+          try {
+            const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setStream(fallbackStream);
+            if (videoRef.current) {
+              videoRef.current.srcObject = fallbackStream;
+            }
+          } catch {
+            setError("Unable to access camera. Please try again.");
           }
-        })
-        .catch(() => {
+        } else {
           setError(
             "Unable to access camera. Please check permissions and try again."
           );
-        });
+        }
+      }
     },
-    [stream]
+    [stream, requestCameraPermission]
   );
 
   useEffect(() => {
