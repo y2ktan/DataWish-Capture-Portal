@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useRouter } from "next/navigation";
 import "./qrcode.css";
 
@@ -14,27 +14,47 @@ export default function ScanPage() {
     // UI state to know if we are currently scanning.
     // We only mount the <div id="reader"> when this is true.
     const [isScanning, setIsScanning] = useState(true);
+    
+    // Camera facing mode: "environment" = back camera, "user" = front camera
+    const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
 
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+
+    const startScanner = async (facing: "environment" | "user") => {
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.stop();
+            } catch (e) {
+                // Ignore if not running
+            }
+        }
+
+        const scanner = new Html5Qrcode("reader");
+        scannerRef.current = scanner;
+
+        try {
+            await scanner.start(
+                { facingMode: facing },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0,
+                },
+                onScanSuccess,
+                onScanFailure
+            );
+        } catch (err) {
+            console.error("Failed to start scanner:", err);
+            setError("Failed to access camera. Please ensure camera permissions are granted.");
+        }
+    };
 
     useEffect(() => {
-        // Only initialize scanner if we are in 'scanning' mode and haven't initialized yet
-        if (isScanning && !scannerRef.current) {
+        // Only initialize scanner if we are in 'scanning' mode
+        if (isScanning) {
             // Small timeout to ensure DOM element exists
             const timer = setTimeout(() => {
-                const scanner = new Html5QrcodeScanner(
-                    "reader",
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0,
-                        rememberLastUsedCamera: false
-                    },
-                    /* verbose= */ false
-                );
-
-                scanner.render(onScanSuccess, onScanFailure);
-                scannerRef.current = scanner;
+                startScanner(facingMode);
             }, 100);
 
             return () => clearTimeout(timer);
@@ -47,19 +67,25 @@ export default function ScanPage() {
         return () => {
             if (scannerRef.current) {
                 try {
-                    scannerRef.current.clear().catch(console.error);
+                    scannerRef.current.stop().catch(console.error);
                 } catch (e) {
-                    console.error("Failed to clear scanner", e);
+                    console.error("Failed to stop scanner", e);
                 }
                 scannerRef.current = null;
             }
         };
     }, []);
 
+    const handleSwitchCamera = async () => {
+        const newFacing = facingMode === "environment" ? "user" : "environment";
+        setFacingMode(newFacing);
+        await startScanner(newFacing);
+    };
+
     function onScanSuccess(decodedText: string) {
         // Stop scanning immediately
         if (scannerRef.current) {
-            scannerRef.current.clear().catch(console.error);
+            scannerRef.current.stop().catch(console.error);
             scannerRef.current = null;
         }
 
@@ -117,9 +143,18 @@ export default function ScanPage() {
 
                 {/* Only render the reader div if we are in scanning mode */}
                 {isScanning && (
-                    <div className="overflow-hidden rounded-xl border-2 border-slate-200">
-                        <div id="reader" className="w-full"></div>
-                    </div>
+                    <>
+                        <div className="overflow-hidden rounded-xl border-2 border-slate-200">
+                            <div id="reader" className="w-full"></div>
+                        </div>
+                        <button
+                            onClick={handleSwitchCamera}
+                            className="w-full rounded-xl border-2 border-slate-300 bg-white py-3 font-semibold text-slate-700 hover:bg-slate-50 transition-colors active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <span className="text-lg">🔄</span>
+                            Switch to {facingMode === "environment" ? "Front" : "Back"} Camera
+                        </button>
+                    </>
                 )}
 
                 {data && (
