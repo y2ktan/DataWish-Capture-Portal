@@ -169,12 +169,23 @@ export default function TreePage() {
                 ff.label.style.opacity = isOffScreen ? '0.4' : '1';
                 ff.label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
             });
-
-            // Pulse the tree
-            const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
-            trunkMeshes.forEach((mat) => {
-                mat.emissiveIntensity = pulse;
-            });
+                // Pulse the tree and make trunks brighter when zoomed out
+                const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
+                let zoomBrightness = 1;
+                if (camera && controls) {
+                    const camDist = camera.position.distanceTo(controls.target);
+                    const minB = 1.0; // normal brightness
+                    const maxB = 6.0; // stronger max brightness when fully zoomed out
+                    const denom = (controls.maxDistance - controls.minDistance) || 1;
+                    let t = (camDist - controls.minDistance) / denom;
+                    t = Math.max(0, Math.min(1, t));
+                    // Ease in (quadratic) so brightness ramps up more near max zoom-out
+                    const eased = Math.pow(t, 1.6);
+                    zoomBrightness = minB + eased * (maxB - minB);
+                }
+                trunkMeshes.forEach((mat) => {
+                    mat.emissiveIntensity = pulse * zoomBrightness;
+                });
 
             if (controls) controls.update();
             renderer.render(scene, camera);
@@ -221,13 +232,15 @@ export default function TreePage() {
 
         fetchFireflies();
 
-        // Poll for new fireflies every 5 seconds
-        const pollInterval = setInterval(fetchFireflies, 5000);
-
         handleResize();
+
+        // Poll for new fireflies every 6 seconds
+        const pollInterval = setInterval(fetchFireflies, 6000);
 
         const resizeObserver = new ResizeObserver(() => handleResize());
         if (containerRef.current) resizeObserver.observe(containerRef.current);
+
+        fetchFireflies();   /* re-fetch */
 
         animate();
 
