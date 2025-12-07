@@ -34,9 +34,24 @@ export default function HomePage() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+
+  // Camera control refs (using refs to avoid re-renders)
+  const zoomRef = useRef(1);
+  const panXRef = useRef(0);
+  const isPanningRef = useRef(false);
+  const lastPanXRef = useRef(0);
+  const lastTouchDistRef = useRef(0);
+  const [, forceUpdate] = useState(0); // For triggering re-render when needed
+
+  // Zoom and pan constants
+  const MIN_ZOOM = 1;
+  const MAX_ZOOM = 4;
+  const PAN_LIMIT = 200; // Max horizontal pan in pixels
+  const LERP = 0.15; // Interpolation constant for smooth animations
 
   const requestCameraPermission = useCallback(async (): Promise<boolean> => {
     // Check if Permissions API is available
@@ -125,6 +140,132 @@ export default function HomePage() {
     },
     [stream, requestCameraPermission]
   );
+
+  // Apply transform to video element
+  const applyTransform = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.style.transform = `scale(${zoomRef.current}) translateX(${panXRef.current}px)`;
+    }
+  }, []);
+
+  // Clamp value within bounds
+  const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+  // Desktop scroll zoom handler
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    zoomRef.current = clamp(zoomRef.current + delta, MIN_ZOOM, MAX_ZOOM);
+    // Reset pan if zooming out to min
+    if (zoomRef.current === MIN_ZOOM) {
+      panXRef.current = 0;
+    }
+    applyTransform();
+  }, [applyTransform, MIN_ZOOM, MAX_ZOOM]);
+
+  // Calculate distance between two touch points
+  const getTouchDistance = (touches: TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Mobile touch start handler
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch zoom start
+      lastTouchDistRef.current = getTouchDistance(e.touches);
+    } else if (e.touches.length === 1) {
+      // Single finger pan start
+      isPanningRef.current = true;
+      lastPanXRef.current = e.touches[0].clientX;
+    }
+  }, []);
+
+  // Mobile touch move handler
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      e.preventDefault();
+      const currentDist = getTouchDistance(e.touches);
+      const delta = (currentDist - lastTouchDistRef.current) * 0.01;
+      zoomRef.current = clamp(zoomRef.current + delta, MIN_ZOOM, MAX_ZOOM);
+      lastTouchDistRef.current = currentDist;
+      if (zoomRef.current === MIN_ZOOM) {
+        panXRef.current = 0;
+      }
+      applyTransform();
+    } else if (e.touches.length === 1 && isPanningRef.current && zoomRef.current > MIN_ZOOM) {
+      // Single finger horizontal pan (only when zoomed in)
+      e.preventDefault();
+      const deltaX = e.touches[0].clientX - lastPanXRef.current;
+      const maxPan = PAN_LIMIT * (zoomRef.current - 1);
+      panXRef.current = clamp(panXRef.current + deltaX * LERP, -maxPan, maxPan);
+      lastPanXRef.current = e.touches[0].clientX;
+      applyTransform();
+    }
+  }, [applyTransform, MIN_ZOOM, MAX_ZOOM, PAN_LIMIT, LERP]);
+
+  // Mobile touch end handler
+  const handleTouchEnd = useCallback(() => {
+    isPanningRef.current = false;
+    lastTouchDistRef.current = 0;
+  }, []);
+
+  // Desktop mouse pan handlers (with Shift key)
+  const handleMouseDown = useCallback((e: MouseEvent) => {
+    if (e.shiftKey && zoomRef.current > MIN_ZOOM) {
+      isPanningRef.current = true;
+      lastPanXRef.current = e.clientX;
+    }
+  }, [MIN_ZOOM]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (isPanningRef.current && e.shiftKey) {
+      const deltaX = e.clientX - lastPanXRef.current;
+      const maxPan = PAN_LIMIT * (zoomRef.current - 1);
+      panXRef.current = clamp(panXRef.current + deltaX * LERP, -maxPan, maxPan);
+      lastPanXRef.current = e.clientX;
+      applyTransform();
+    }
+  }, [applyTransform, PAN_LIMIT, LERP]);
+
+  const handleMouseUp = useCallback(() => {
+    isPanningRef.current = false;
+  }, []);
+
+  // Setup and cleanup event listeners for camera controls
+  useEffect(() => {
+    const container = containerRef.current;
+    if (step === "capture" && container) {
+      // Desktop events
+      container.addEventListener("wheel", handleWheel, { passive: false });
+      container.addEventListener("mousedown", handleMouseDown);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      
+      // Mobile events
+      container.addEventListener("touchstart", handleTouchStart, { passive: true });
+      container.addEventListener("touchmove", handleTouchMove, { passive: false });
+      container.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+      // Reset zoom and pan when entering capture mode
+      zoomRef.current = 1;
+      panXRef.current = 0;
+      applyTransform();
+
+      return () => {
+        container.removeEventListener("wheel", handleWheel);
+        container.removeEventListener("mousedown", handleMouseDown);
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+        container.removeEventListener("touchstart", handleTouchStart);
+        container.removeEventListener("touchmove", handleTouchMove);
+        container.removeEventListener("touchend", handleTouchEnd);
+      };
+    }
+  }, [step, handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd, handleMouseDown, handleMouseMove, handleMouseUp, applyTransform]);
 
   useEffect(() => {
     if (step === "capture" && !stream) {
@@ -297,13 +438,20 @@ export default function HomePage() {
         <section className="mt-2 flex flex-1 flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-600">
             Center yourself in the frame, then tap &quot;Capture&quot;.
+            <span className="block text-xs text-slate-400 mt-1">
+              Pinch or scroll to zoom • Shift+drag to pan
+            </span>
           </p>
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black">
+          <div 
+            ref={containerRef}
+            className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black touch-none"
+          >
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-75"
+              style={{ transformOrigin: "center center" }}
             />
           </div>
           <canvas ref={canvasRef} className="hidden" />
