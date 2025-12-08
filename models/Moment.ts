@@ -10,6 +10,7 @@ export interface MomentInput {
   qrCodeUrl?: string;
   aphorism: string;
   downloadToken: string;
+  isFireflyRelease: number;
 }
 
 export class Moment {
@@ -52,8 +53,8 @@ export class Moment {
     }
     
     const stmt = db.prepare(`
-      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken, isFireflyRelease)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       input.englishName,
@@ -64,7 +65,8 @@ export class Moment {
       input.photoAssetUrl,
       input.qrCodeUrl || null,
       input.aphorism,
-      input.downloadToken
+      input.downloadToken,
+      input.isFireflyRelease ? 1 : 0
     );
     return this.findOneById(result.lastInsertRowid as number)!;
   }
@@ -104,6 +106,7 @@ export class Moment {
       chineseName?: string;
       phoneNumber?: string;
       email?: string;
+      isFireflyRelease?: number;
     }
   ): MomentRow | null {
     const db = getDatabase();
@@ -125,6 +128,11 @@ export class Moment {
     if (updates.email !== undefined) {
       fields.push("email = ?");
       values.push(updates.email);
+    }
+
+    if (updates.isFireflyRelease !== undefined) {
+      fields.push("isFireflyRelease = ?");
+      values.push(updates.isFireflyRelease ? 1 : 0);
     }
 
     if (fields.length === 0) {

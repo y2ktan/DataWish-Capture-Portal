@@ -34,7 +34,8 @@ export function getDatabase(): Database.Database {
       aphorism TEXT NOT NULL,
       downloadToken TEXT NOT NULL UNIQUE,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      isFireflyRelease INTEGER NOT NULL DEFAULT 0
     );
     
     CREATE INDEX IF NOT EXISTS idx_downloadToken ON moments(downloadToken);
@@ -44,6 +45,12 @@ export function getDatabase(): Database.Database {
   // Add qrCodeUrl column if it doesn't exist (for existing databases)
   try {
     db.exec(`ALTER TABLE moments ADD COLUMN qrCodeUrl TEXT`);
+  } catch {
+    // Column already exists, ignore
+  }
+
+  try {
+    db.exec(`ALTER TABLE moments ADD COLUMN isFireflyRelease INTEGER NOT NULL DEFAULT 0`);
   } catch {
     // Column already exists, ignore
   }
@@ -64,4 +71,5 @@ export interface MomentRow {
   downloadToken: string;
   createdAt: string;
   updatedAt: string;
+  isFireflyRelease: number;  // 0: not released, 1: released
 }

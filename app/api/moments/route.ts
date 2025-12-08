@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
     const resultUrl = `${req.nextUrl.origin}/result/${downloadToken}`;
     const qrBuffer = await QRCode.toBuffer(resultUrl, { margin: 1, width: 256 });
     const qrCodeUrl = saveQRCodeFromBuffer(qrBuffer);
+    const isFireflyRelease = 0;
 
     const moment = Moment.create({
       englishName,
@@ -116,7 +117,8 @@ export async function POST(req: NextRequest) {
       photoAssetUrl: processed.finalImageUrl,
       qrCodeUrl,
       aphorism: processed.aphorism,
-      downloadToken
+      downloadToken,
+      isFireflyRelease
     });
 
     return NextResponse.json(

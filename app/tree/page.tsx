@@ -234,13 +234,15 @@ export default function TreePage() {
 
         handleResize();
 
+        fetchFireflies();   /* re-fetch after resize */
+
         // Poll for new fireflies every 6 seconds
         const pollInterval = setInterval(fetchFireflies, 6000);
 
         const resizeObserver = new ResizeObserver(() => handleResize());
         if (containerRef.current) resizeObserver.observe(containerRef.current);
 
-        fetchFireflies();   /* re-fetch */
+
 
         animate();
 
