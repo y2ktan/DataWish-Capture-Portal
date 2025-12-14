@@ -10,7 +10,7 @@ export interface MomentInput {
   qrCodeUrl?: string;
   aphorism: string;
   downloadToken: string;
-  isFireflyRelease: number;
+  isCheckedIn: number;
 }
 
 export class Moment {
@@ -53,7 +53,7 @@ export class Moment {
     }
     
     const stmt = db.prepare(`
-      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken, isFireflyRelease)
+      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken, isCheckedIn)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
@@ -66,7 +66,7 @@ export class Moment {
       input.qrCodeUrl || null,
       input.aphorism,
       input.downloadToken,
-      input.isFireflyRelease ? 1 : 0
+      input.isCheckedIn ? 1 : 0
     );
     return this.findOneById(result.lastInsertRowid as number)!;
   }
@@ -106,7 +106,7 @@ export class Moment {
       chineseName?: string;
       phoneNumber?: string;
       email?: string;
-      isFireflyRelease?: number;
+      isCheckedIn?: number;
     }
   ): MomentRow | null {
     const db = getDatabase();
@@ -130,9 +130,9 @@ export class Moment {
       values.push(updates.email);
     }
 
-    if (updates.isFireflyRelease !== undefined) {
-      fields.push("isFireflyRelease = ?");
-      values.push(updates.isFireflyRelease ? 1 : 0);
+    if (updates.isCheckedIn !== undefined) {
+      fields.push("isCheckedIn = ?");
+      values.push(updates.isCheckedIn ? 1 : 0);
     }
 
     if (fields.length === 0) {
