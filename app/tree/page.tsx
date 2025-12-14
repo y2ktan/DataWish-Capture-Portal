@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -11,7 +11,7 @@ import "./tree.css";
 import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
-export default function TreePage() {
+function TreePageInner() {
     const containerRef = useRef<HTMLDivElement>(null);
     const labelsRef = useRef<HTMLDivElement>(null);
     const searchParams = useSearchParams();
@@ -440,5 +440,13 @@ export default function TreePage() {
             <div ref={containerRef} className="canvas-layer" />
             <div ref={labelsRef} className="labels-layer" />
         </main>
+    );
+}
+
+export default function TreePage() {
+    return (
+        <Suspense fallback={null}>
+            <TreePageInner />
+        </Suspense>
     );
 }
