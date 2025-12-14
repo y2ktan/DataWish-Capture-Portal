@@ -99,4 +99,23 @@ export class Section {
     `);
     return stmt.all(sectionId) as { englishName: string; momentId: number }[];
   }
+
+  static getCheckinsByMoment(momentId: number): { id: number; sectionId: number; sectionName: string; isFireflyRelease: number }[] {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT sc.id, sc.sectionId, s.name as sectionName, sc.isFireflyRelease
+      FROM section_checkins sc
+      JOIN sections s ON sc.sectionId = s.id
+      WHERE sc.momentId = ?
+      ORDER BY s.displayOrder ASC
+    `);
+    return stmt.all(momentId) as { id: number; sectionId: number; sectionName: string; isFireflyRelease: number }[];
+  }
+
+  static deleteCheckin(momentId: number, sectionId: number): boolean {
+    const db = getDatabase();
+    const stmt = db.prepare("DELETE FROM section_checkins WHERE momentId = ? AND sectionId = ?");
+    const result = stmt.run(momentId, sectionId);
+    return result.changes > 0;
+  }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Moment } from "@/models/Moment";
+import { Section } from "@/models/Section";
 import { rateLimit } from "../../utils/rateLimit";
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
         createdAt: m.createdAt,
         downloadToken: m.downloadToken,
         postUrl: `${baseUrl}/result/${m.downloadToken}`,
+        sections: Section.getCheckinsByMoment(m.id),
       }))
     );
   } catch (error) {
@@ -113,6 +115,16 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const sectionId = searchParams.get("sectionId");
+
+    // If sectionId is provided, delete only the section check-in
+    if (id && sectionId) {
+      const deleted = Section.deleteCheckin(Number(id), Number(sectionId));
+      if (!deleted) {
+        return NextResponse.json({ error: "Section check-in not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    }
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -165,5 +177,3 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
-
-

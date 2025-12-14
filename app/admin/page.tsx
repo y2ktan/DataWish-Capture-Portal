@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+interface SectionCheckin {
+  id: number;
+  sectionId: number;
+  sectionName: string;
+  isFireflyRelease: number;
+}
+
 interface AdminMomentRow {
   id: string;
   englishName: string;
@@ -11,7 +18,8 @@ interface AdminMomentRow {
   email?: string;
   createdAt: string;
   downloadToken: string;
-  postUrl: string; 
+  postUrl: string;
+  sections: SectionCheckin[];
 }
 
 export default function AdminPage() {
@@ -82,6 +90,33 @@ export default function AdminPage() {
         throw new Error(json?.error || "Failed to delete record.");
       }
       setRows((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected error occurred.";
+      setError(message);
+    }
+  };
+
+  const handleRemoveSection = async (momentId: string, sectionId: number) => {
+    try {
+      const res = await fetch(`/api/admin/moments?id=${encodeURIComponent(momentId)}&sectionId=${sectionId}`, {
+        method: "DELETE",
+        headers: {
+          "x-admin-key": passwordInput
+        }
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Failed to remove section.");
+      }
+      // Update local state to remove the section chip
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === momentId
+            ? { ...r, sections: r.sections.filter((s) => s.sectionId !== sectionId) }
+            : r
+        )
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unexpected error occurred.";
@@ -219,8 +254,8 @@ export default function AdminPage() {
         )}
         <ul className="divide-y divide-slate-100">
           {rows.map((row) => (
-            <li key={row.id} className="py-2">
-              <div className="flex items-center justify-between gap-2">
+            <li key={row.id} className="py-3">
+              <div className="flex items-start justify-between gap-2">
                 {/* Clickable text area for editing */}
                 <div
                   className="flex-1 cursor-pointer text-sm"
@@ -231,10 +266,39 @@ export default function AdminPage() {
                     {row.chineseName ? ` (${row.chineseName})` : ""}
                   </p>
                   <p className="text-xs text-slate-500">{row.phoneNumber}</p>
+                  {/* Section chips */}
+                  {row.sections && row.sections.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {row.sections.map((sec) => (
+                        <span
+                          key={sec.sectionId}
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                            sec.isFireflyRelease
+                              ? "bg-green-100 text-green-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {sec.sectionName}
+                          {sec.isFireflyRelease ? " ✓" : ""}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveSection(row.id, sec.sectionId);
+                            }}
+                            className="ml-0.5 hover:text-red-600"
+                            title="Remove section"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Button Group: View Photo & Delete */}
-                <div className="flex gap-2"> 
+                <div className="flex gap-2 flex-shrink-0"> 
                     <a
                       href={row.postUrl}
                       target="_blank"
