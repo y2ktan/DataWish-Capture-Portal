@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@imgly/background-removal-node": "^1.4.5",
+    "@napi-rs/canvas": "^0.1.84",
     "@types/three": "^0.181.0",
     "better-sqlite3": "^12.5.0",
     "chokidar": "^5.0.0",

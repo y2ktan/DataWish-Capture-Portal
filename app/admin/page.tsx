@@ -196,12 +196,18 @@ export default function AdminPage() {
   return (
     <main className="flex flex-1 flex-col gap-4">
       <header className="pt-2">
-        <div className="flex justify-center gap-4 mb-2">
+        <div className="flex justify-center gap-4 mb-2 flex-wrap">
           <Link
             href="/admin/sections"
             className="rounded-md border border-tzuchiBlue/50 bg-tzuchiBlue/5 px-3 py-1.5 text-xs text-tzuchiBlue hover:bg-tzuchiBlue/10"
           >
             Manage Sections
+          </Link>
+          <Link
+            href="/admin/aphorisms"
+            className="rounded-md border border-tzuchiBlue/50 bg-tzuchiBlue/5 px-3 py-1.5 text-xs text-tzuchiBlue hover:bg-tzuchiBlue/10"
+          >
+            Aphorisms
           </Link>
           <Link
             href="/admin/themes"

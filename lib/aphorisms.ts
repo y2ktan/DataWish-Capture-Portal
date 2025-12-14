@@ -1,17 +1,29 @@
-export const JING_SI_APHORISMS: string[] = [
-  "Gratitude brings joy and contentment.",
-  "A kind heart is a source of endless blessings.",
-  "Let compassion be the language of your life.",
-  "In giving, we receive the greatest happiness.",
-  "A peaceful mind creates a peaceful world."
-];
+import { Aphorism } from "@/models/Aphorism";
 
-export function getRandomAphorism() {
-  if (JING_SI_APHORISMS.length === 0) {
-    return "";
-  }
-  const index = Math.floor(Math.random() * JING_SI_APHORISMS.length);
-  return JING_SI_APHORISMS[index];
+export interface BilingualAphorism {
+  chinese: string;
+  english: string;
 }
 
+/**
+ * Get a random bilingual aphorism from the database
+ */
+export function getRandomAphorism(): BilingualAphorism {
+  const aphorism = Aphorism.getRandomAphorism();
+  if (aphorism) {
+    return aphorism;
+  }
+  // Fallback if database is empty
+  return {
+    chinese: "施比受更有福",
+    english: "To give is better than to receive"
+  };
+}
 
+/**
+ * Get formatted aphorism string for display (both languages)
+ */
+export function getFormattedAphorism(): string {
+  const { chinese, english } = getRandomAphorism();
+  return `${chinese}\n${english}`;
+}

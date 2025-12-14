@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { getRandomAphorism } from "./aphorisms";
+import { getRandomAphorism, BilingualAphorism } from "./aphorisms";
 import { getRandomBackground, getBackgroundPath } from "./backgroundStorage";
 
 export interface ProcessedImageResult {
@@ -12,6 +12,10 @@ export interface ProcessedImageResult {
 // Output dimensions for consistency
 const OUTPUT_WIDTH = 1080;
 const OUTPUT_HEIGHT = 1080;
+
+// Font paths
+const CHINESE_FONT_PATH = path.join(process.cwd(), "app", "fonts", "FZGLJW.TTF");
+const ENGLISH_FONT_PATH = path.join(process.cwd(), "app", "fonts", "Herculanum.ttf");
 
 // Uploads directory
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
@@ -27,6 +31,40 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 async function getSharp() {
   const sharp = (await import("sharp")).default;
   return sharp;
+}
+
+/**
+ * Get canvas module for custom font rendering
+ */
+async function getCanvas() {
+  const { createCanvas, GlobalFonts } = await import("@napi-rs/canvas");
+  return { createCanvas, GlobalFonts };
+}
+
+/**
+ * Register custom fonts for canvas
+ */
+let fontsRegistered = false;
+async function registerFonts() {
+  if (fontsRegistered) return;
+  
+  const { GlobalFonts } = await getCanvas();
+  
+  if (fs.existsSync(CHINESE_FONT_PATH)) {
+    GlobalFonts.registerFromPath(CHINESE_FONT_PATH, "FZGLJW");
+    console.log("Registered Chinese font: FZGLJW");
+  } else {
+    console.warn("Chinese font not found:", CHINESE_FONT_PATH);
+  }
+  
+  if (fs.existsSync(ENGLISH_FONT_PATH)) {
+    GlobalFonts.registerFromPath(ENGLISH_FONT_PATH, "Herculanum");
+    console.log("Registered English font: Herculanum");
+  } else {
+    console.warn("English font not found:", ENGLISH_FONT_PATH);
+  }
+  
+  fontsRegistered = true;
 }
 
 /**
@@ -63,12 +101,68 @@ async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
 }
 
 /**
+ * Create text overlay image using @napi-rs/canvas with custom fonts
+ */
+async function createTextOverlay(aphorism: BilingualAphorism): Promise<Buffer> {
+  await registerFonts();
+  
+  const { createCanvas } = await getCanvas();
+  const canvas = createCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  const ctx = canvas.getContext("2d");
+  
+  // Font sizes - adjusted for 1080px canvas
+  const chineseFontSize = 42;
+  const englishFontSize = 32;
+  const strokeWidth = 3; // Black border width
+  
+  // Position text at top of image
+  const textYOffset = Math.floor(OUTPUT_HEIGHT * 0.12);
+  const lineSpacing = 20;
+  
+  // Draw Chinese text with black border (stroke) and white fill
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.strokeStyle = "black";
+  ctx.fillStyle = "yellow";
+  ctx.font = `${chineseFontSize}px FZGLJW, serif`;
+  ctx.lineWidth = strokeWidth;
+  
+  // Draw stroke first, then fill for Chinese text
+  ctx.strokeText(aphorism.chinese, OUTPUT_WIDTH / 2, textYOffset);
+  ctx.fillText(aphorism.chinese, OUTPUT_WIDTH / 2, textYOffset);
+  
+  // English text position
+  const englishY = textYOffset + chineseFontSize + lineSpacing;
+  
+  // Draw English text with black border (stroke) and white fill
+  ctx.font = `${englishFontSize}px Herculanum, serif`;
+  ctx.lineWidth = strokeWidth;
+  ctx.strokeStyle = "black";
+  ctx.fillStyle = "yellow";
+  
+  // Handle multi-line English aphorisms
+  const englishLines = aphorism.english.split(". ");
+  let currentY = englishY;
+  
+  for (const line of englishLines) {
+    if (line.trim()) {
+      const textToDraw = englishLines.length > 1 && !line.endsWith(".") ? `${line.trim()}.` : line.trim();
+      ctx.strokeText(textToDraw, OUTPUT_WIDTH / 2, currentY);
+      ctx.fillText(textToDraw, OUTPUT_WIDTH / 2, currentY);
+      currentY += englishFontSize + 5; // Add spacing between lines
+    }
+  }
+  
+  return canvas.toBuffer("image/png");
+}
+
+/**
  * Composite the subject onto a background and add aphorism text
  */
 async function compositeImage(
   subjectBuffer: Buffer,
   backgroundPath: string,
-  aphorism: string
+  aphorism: BilingualAphorism
 ): Promise<Buffer> {
   const sharp = await getSharp();
 
@@ -87,51 +181,10 @@ async function compositeImage(
     })
     .toBuffer();
 
-  // 3. Text Configuration
-  const fontSize = 40; // Slightly larger for better readability
-  const maxWidth = OUTPUT_WIDTH - 120;
-  const textYOffset = Math.floor(OUTPUT_HEIGHT * 0.15); // 15% from top
+  // 3. Create text overlay with custom fonts
+  const textOverlay = await createTextOverlay(aphorism);
 
-  // 4. Wrap Text
-  const lines = wrapText(aphorism, maxWidth, fontSize);
-  const lineHeight = fontSize * 1.4;
-
-  // 5. Generate SVG with Drop Shadow (instead of black box)
-  const textElements = lines
-    .map((line, i) => {
-      const yPos = textYOffset + i * lineHeight;
-      return `
-        <text 
-          x="${OUTPUT_WIDTH / 2 + 2}" 
-          y="${yPos + 2}" 
-          font-family="Arial, sans-serif" 
-          font-size="${fontSize}" 
-          font-weight="bold"
-          fill="rgba(0,0,0,0.7)" 
-          text-anchor="middle"
-        >
-          ${escapeXml(line)}
-        </text>
-        <text 
-          x="${OUTPUT_WIDTH / 2}" 
-          y="${yPos}" 
-          font-family="Arial, sans-serif" 
-          font-size="${fontSize}" 
-          font-weight="bold"
-          fill="white" 
-          text-anchor="middle"
-        >
-          ${escapeXml(line)}
-        </text>`;
-    }).join("");
-
-  const svgOverlay = `
-    <svg width="${OUTPUT_WIDTH}" height="${OUTPUT_HEIGHT}">
-      ${textElements}
-    </svg>
-  `;
-
-  // 6. Composite Layers
+  // 4. Composite Layers
   return await background
     .composite([
       { 
@@ -139,33 +192,12 @@ async function compositeImage(
         gravity: "south" // Keep person at the bottom of the composite
       },
       { 
-        input: Buffer.from(svgOverlay), 
+        input: textOverlay, 
         gravity: "northwest" 
       }
     ])
     .jpeg({ quality: 90 })
     .toBuffer();
-}
-
-/** * Helper to wrap text based on approximate width 
- */
-function wrapText(text: string, maxWidth: number, fontSize: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let currentLine = "";
-
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const charWidth = fontSize * 0.6; // Rough estimate for sans-serif
-    if (testLine.length * charWidth > maxWidth) {
-      if (currentLine) lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-  if (currentLine) lines.push(currentLine);
-  return lines;
 }
 
 /**
@@ -205,7 +237,7 @@ function dataUrlToBuffer(dataUrl: string): Buffer {
  * Main image processing pipeline:
  * 1. Extract subject from user photo (remove background)
  * 2. Composite subject onto selected/random background
- * 3. Overlay Jing Si aphorism text
+ * 3. Overlay Jing Si aphorism text (bilingual)
  * 4. Save and return final image URL
  */
 export async function processImageWithAphorism(
@@ -213,6 +245,7 @@ export async function processImageWithAphorism(
   backgroundUrl?: string
 ): Promise<ProcessedImageResult> {
   const aphorism = getRandomAphorism();
+  const aphorismDisplay = `${aphorism.chinese} / ${aphorism.english}`;
 
   try {
     // Convert data URL to buffer
@@ -247,26 +280,13 @@ export async function processImageWithAphorism(
         })
         .toBuffer();
 
-      // Create simple text overlay
-      const fontSize = 32;
-      const textY = OUTPUT_HEIGHT - 100;
-      
-      const svgOverlay = `
-        <svg width="${OUTPUT_WIDTH}" height="${OUTPUT_HEIGHT}">
-          <rect x="0" y="${textY - 40}" width="${OUTPUT_WIDTH}" height="140" fill="rgba(0,0,0,0.5)"/>
-          <text x="${OUTPUT_WIDTH / 2}" y="${textY + 20}" 
-            font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold"
-            fill="white" text-anchor="middle" 
-            stroke="black" stroke-width="1" paint-order="stroke">
-            ${escapeXml(aphorism)}
-          </text>
-        </svg>
-      `;
+      // Create text overlay with custom fonts
+      const textOverlay = await createTextOverlay(aphorism);
 
       const result = await sharp(resizedImage)
         .composite([
           {
-            input: Buffer.from(svgOverlay),
+            input: textOverlay,
             gravity: "northwest"
           }
         ])
@@ -274,7 +294,7 @@ export async function processImageWithAphorism(
         .toBuffer();
 
       const finalImageUrl = saveProcessedImage(result);
-      return { finalImageUrl, aphorism };
+      return { finalImageUrl, aphorism: aphorismDisplay };
     }
 
     // Full processing pipeline with background replacement
@@ -289,7 +309,7 @@ export async function processImageWithAphorism(
     // Step 4: Save final image
     const finalImageUrl = saveProcessedImage(processedBuffer);
 
-    return { finalImageUrl, aphorism };
+    return { finalImageUrl, aphorism: aphorismDisplay };
   } catch (error) {
     console.error("Image processing failed:", error);
     
@@ -301,7 +321,7 @@ export async function processImageWithAphorism(
     
     return {
       finalImageUrl: `/uploads/${filename}`,
-      aphorism
+      aphorism: aphorismDisplay
     };
   }
 }

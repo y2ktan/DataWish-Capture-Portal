@@ -194,7 +194,11 @@ export default function ResultPage() {
           </div>
           <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm text-slate-700">
             <p className="font-medium">Jing Si Aphorism</p>
-            <p className="mt-1 italic">&ldquo;{data.aphorism}&rdquo;</p>
+            {data.aphorism.split(" / ").map((line, index) => (
+              <p key={index} className="mt-1 italic">
+                &ldquo;{line}&rdquo;
+              </p>
+            ))}
           </div>
 
           {data.qrCodeUrl && (
