@@ -92,9 +92,11 @@ async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
 
     // Convert blob back to buffer
     const arrayBuffer = await resultBlob.arrayBuffer();
+    console.log("Background removal successful");
     return Buffer.from(arrayBuffer);
   } catch (error) {
     console.error("Background removal failed:", error);
+    console.log("Continuing with original image (no background removal)...");
     // Return original image if background removal fails
     return imageBuffer;
   }
