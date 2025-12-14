@@ -48,6 +48,8 @@ export default function TreePage() {
         const clock = new THREE.Clock();
         let animationId: number;
         const glareMat = createGlareMaterial();
+        let boat: THREE.Object3D | null = null;
+        let boatBaseRotY = 0;
 
         let width = containerRef.current.clientWidth;
         let height = containerRef.current.clientHeight;
@@ -132,6 +134,11 @@ export default function TreePage() {
             const delta = clock.getDelta();
             const time = clock.getElapsedTime();
 
+            // Boat rotation (anticlockwise)
+            if (boat) {
+                boat.rotation.y = boatBaseRotY + time * -0.03;
+            }
+
             fireflies.forEach(ff => {
                 const blink = Math.sin(time * 3 + ff.blinkOffset);
 
@@ -214,6 +221,8 @@ export default function TreePage() {
         setupSceneLights(scene);
         createEveningBackground(scene);
         createWater(scene);
+        boat = scene.getObjectByName("boat") ?? null;
+        boatBaseRotY = boat?.rotation.y ?? 0;
         createSpiritTree(scene, perchPoints);
 
         // Cache trunk meshes for animation loop optimization

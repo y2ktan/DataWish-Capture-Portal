@@ -180,6 +180,8 @@ export function createWater(scene: THREE.Scene) {
     const waterGeo = new THREE.PlaneGeometry(300, 300);
     const waterMat = new THREE.MeshStandardMaterial({
         color: COLORS.WATER,
+        emissive: COLORS.WATER,
+        emissiveIntensity: 1,
         roughness: 0.0,
         metalness: 0.9,
         transparent: true,
@@ -234,12 +236,11 @@ export function createWater(scene: THREE.Scene) {
     scene.add(particles);
     particles.renderOrder = 999;
 
-    // Add a small boat
-    createBoat(scene);
-}
+    }
 
 export function createBoat(scene: THREE.Scene) {
     const boatGroup = new THREE.Group();
+    boatGroup.name = "boat";
     const loader = new THREE.TextureLoader();
     let woodMap: THREE.Texture | null = null;
     
@@ -274,7 +275,7 @@ export function createBoat(scene: THREE.Scene) {
         map: woodMap || undefined,
         color: 0xb8956a, // Brown wood color
         emissive: 0xb8956a,
-        emissiveIntensity: 0.3,
+        emissiveIntensity: 6.0,
         roughness: 0.8,
         metalness: 0.1
     });
@@ -295,7 +296,7 @@ export function createBoat(scene: THREE.Scene) {
     const seatMat = new THREE.MeshStandardMaterial({
         color: 0xA0522D,
         emissive: 0xA0522D,
-        emissiveIntensity: 0.25,
+        emissiveIntensity: 5.0,
         roughness: 0.9
     });
     const seat1 = new THREE.Mesh(seatGeo, seatMat);
@@ -307,7 +308,7 @@ export function createBoat(scene: THREE.Scene) {
     const mastMat = new THREE.MeshStandardMaterial({
         color: 0xD2691E,
         emissive: 0xD2691E,
-        emissiveIntensity: 0.2,
+        emissiveIntensity: 4.5,
         roughness: 0.7
     });
     const mast = new THREE.Mesh(mastGeo, mastMat);
@@ -320,6 +321,11 @@ export function createBoat(scene: THREE.Scene) {
     // Position boat on water near tree
     boatGroup.position.set(12, 0.3, 10);
     boatGroup.rotation.y = Math.PI / 6; // Slight angle
+
+    // Local light so the boat stays visible under the tree canopy
+    const boatLight = new THREE.PointLight(0xffffcc, 8, 50, 1);
+    boatLight.position.set(0, 2, 0);
+    boatGroup.add(boatLight);
 
     scene.add(boatGroup);
 }
