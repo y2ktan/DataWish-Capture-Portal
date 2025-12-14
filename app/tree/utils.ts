@@ -37,9 +37,17 @@ export function setupSceneLights(scene: THREE.Scene) {
     moonLight.position.set(20, 50, -20);
     scene.add(moonLight);
 
+    const rimLight = new THREE.DirectionalLight(0x66ccff, 1.5);
+    rimLight.position.set(0, 5, -10);
+    scene.add(rimLight);
+
     const treeHeartLight = new THREE.PointLight(COLORS.HEART_LIGHT, 2.0, 60);
     treeHeartLight.position.set(0, 15, 0);
     scene.add(treeHeartLight);
+
+    const waterLight = new THREE.PointLight(0x66aaff, 2, 120);
+    waterLight.position.set(0, 1, 12);
+    scene.add(waterLight);
 
     const trunkSpotlight = new THREE.SpotLight(COLORS.TRUNK_SPOTLIGHT, 5);
     trunkSpotlight.position.set(0, 50, 40);
