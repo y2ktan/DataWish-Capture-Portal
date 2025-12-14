@@ -21,8 +21,8 @@ export const COLORS = {
 export const CONFIG = {
     FOG_DENSITY: 0.015,
     CAMERA_FOV: 60,
-    INITIAL_Z_PORTRAIT: 95,
-    INITIAL_Z_LANDSCAPE: 65,
+    INITIAL_Z_PORTRAIT: 100,
+    INITIAL_Z_LANDSCAPE: 100,
     ZOOMOUT_MAX_DISTANCE: 110,
     TRUNC_COUNT: 6,
     LEAVES_COUNT: 12000,
@@ -349,7 +349,7 @@ function createTexturedTrunkMaterial() {
     });
 }
 
-export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[]) {
+export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[]): THREE.Group {
     const treeGroup = new THREE.Group();
 
     const trunkMaterial = createTexturedTrunkMaterial();
@@ -460,6 +460,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     treeGroup.position.y = -5;
 
     scene.add(treeGroup);
+
+    return treeGroup;
 }
 
 export function createGlareMaterial() {
