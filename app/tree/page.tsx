@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
 import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars } from "./utils";
@@ -43,6 +46,7 @@ export default function TreePage() {
 
         // --- Scene Setup ---
         let scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, controls: any;
+        let composer: EffectComposer;
         const fireflies: any[] = [];
         const perchPoints: THREE.Vector3[] = [];
         const clock = new THREE.Clock();
@@ -70,6 +74,18 @@ export default function TreePage() {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
+
+        // Post-processing (Avatar-like glow)
+        composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(
+            new UnrealBloomPass(
+                new THREE.Vector2(width, height),
+                0.9, // strength
+                0.4, // radius
+                0.75 // threshold
+            )
+        );
 
         rendererRef.current = renderer;
         cameraRef.current = camera;
@@ -121,6 +137,7 @@ export default function TreePage() {
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
+            composer.setSize(w, h);
             dimensionsRef.current = { width: w, height: h };
         };
 
@@ -214,7 +231,7 @@ export default function TreePage() {
                 });
 
             if (controls) controls.update();
-            renderer.render(scene, camera);
+            composer.render();
         };
 
         // --- Execution Flow ---
@@ -350,6 +367,7 @@ export default function TreePage() {
                 eventSource.close();
             }
             cancelAnimationFrame(animationId);
+            composer.dispose();
             renderer.dispose();
             if (labelsRef.current) labelsRef.current.innerHTML = '';
         };
