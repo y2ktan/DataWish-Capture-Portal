@@ -227,46 +227,116 @@ export default function TreePage() {
         // Expose spawn function FIRST
         spawnRef.current = spawnFirefly;
 
+        // Remove firefly by name
+        const removeFirefly = (targetName: string) => {
+            const index = fireflies.findIndex(ff => ff.label.textContent === targetName);
+            if (index !== -1) {
+                const ff = fireflies[index];
+                // Remove from scene
+                scene.remove(ff.obj);
+                // Remove label from DOM
+                if (ff.label && ff.label.parentNode) {
+                    ff.label.parentNode.removeChild(ff.label);
+                }
+                // Remove from array
+                fireflies.splice(index, 1);
+                console.log(`[Tree] Removed firefly: ${targetName}`);
+            }
+        };
+
+        // Sync fireflies with server state
+        const syncFireflies = (serverNames: string[]) => {
+            const serverSet = new Set(serverNames);
+            const currentNames = new Set(fireflies.map(ff => ff.label.textContent));
+            
+            // Add new fireflies
+            serverNames.forEach(n => {
+                if (n !== name && !currentNames.has(n)) {
+                    spawnFirefly(n);
+                }
+            });
+            
+            // Remove fireflies not in server list
+            const toRemove = fireflies.filter(ff => !serverSet.has(ff.label.textContent) && ff.label.textContent !== name);
+            toRemove.forEach(ff => removeFirefly(ff.label.textContent));
+        };
+
         // Hide loading immediately - tree is ready to view
         setLoading(false);
 
-        // Fetch fireflies and listen for updates
-        const fetchFireflies = () => {
-            // If section is specified, fetch only fireflies for that section
-            const url = section ? `/api/moments?section=${section}` : '/api/moments';
-            fetch(url)
-                .then(res => res.json())
-                .then(data => {
-                    const names = data.names || [];
-                    names.forEach((n: string) => {
-                        const alreadyExists = fireflies.some(ff => ff.label.textContent === n);
-                        if (n !== name && !alreadyExists) {
-                            spawnFirefly(n);
-                        }
-                    });
-                })
-                .catch(err => console.error("Failed to fetch fireflies:", err));
-        };
-
-        fetchFireflies();
+        // Use SSE for real-time updates if section is specified
+        let eventSource: EventSource | null = null;
+        
+        if (section) {
+            eventSource = new EventSource(`/api/sse/fireflies?section=${section}`);
+            
+            eventSource.addEventListener('sync', (e) => {
+                try {
+                    const names = JSON.parse(e.data) as string[];
+                    syncFireflies(names);
+                    console.log(`[SSE] Synced ${names.length} fireflies`);
+                } catch (err) {
+                    console.error('[SSE] Failed to parse sync event:', err);
+                }
+            });
+            
+            eventSource.addEventListener('add', (e) => {
+                try {
+                    const addedName = JSON.parse(e.data) as string;
+                    const alreadyExists = fireflies.some(ff => ff.label.textContent === addedName);
+                    if (addedName !== name && !alreadyExists) {
+                        spawnFirefly(addedName);
+                        console.log(`[SSE] Added firefly: ${addedName}`);
+                    }
+                } catch (err) {
+                    console.error('[SSE] Failed to parse add event:', err);
+                }
+            });
+            
+            eventSource.addEventListener('remove', (e) => {
+                try {
+                    const removedName = JSON.parse(e.data) as string;
+                    removeFirefly(removedName);
+                    console.log(`[SSE] Removed firefly: ${removedName}`);
+                } catch (err) {
+                    console.error('[SSE] Failed to parse remove event:', err);
+                }
+            });
+            
+            eventSource.onerror = (err) => {
+                console.error('[SSE] Connection error:', err);
+            };
+        } else {
+            // Fallback to polling if no section specified
+            const fetchFireflies = () => {
+                fetch('/api/moments')
+                    .then(res => res.json())
+                    .then(data => {
+                        const names = data.names || [];
+                        names.forEach((n: string) => {
+                            const alreadyExists = fireflies.some(ff => ff.label.textContent === n);
+                            if (n !== name && !alreadyExists) {
+                                spawnFirefly(n);
+                            }
+                        });
+                    })
+                    .catch(err => console.error("Failed to fetch fireflies:", err));
+            };
+            fetchFireflies();
+        }
 
         handleResize();
 
-        fetchFireflies();   /* re-fetch after resize */
-
-        // Poll for new fireflies every 6 seconds
-        const pollInterval = setInterval(fetchFireflies, 6000);
-
         const resizeObserver = new ResizeObserver(() => handleResize());
         if (containerRef.current) resizeObserver.observe(containerRef.current);
-
-
 
         animate();
 
         return () => {
             resizeObserver.disconnect();
-            clearInterval(pollInterval);
+            if (eventSource) {
+                eventSource.close();
+            }
             cancelAnimationFrame(animationId);
             renderer.dispose();
             if (labelsRef.current) labelsRef.current.innerHTML = '';

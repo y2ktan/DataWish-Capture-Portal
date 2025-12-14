@@ -85,6 +85,30 @@ The application supports multiple "sections" for organizing check-ins. Each sect
 - `sections` table: id, name, displayOrder, createdAt
 - `section_checkins` table: id, momentId, sectionId, isFireflyRelease, checkedInAt
 
+## Real-time Updates (SSE)
+
+The tree page uses Server-Sent Events (SSE) for real-time firefly updates instead of polling.
+
+### How it Works
+1. **Chokidar File Watcher**: Monitors the SQLite database file (`data/moments.db`) for changes
+2. **SSE Endpoint**: `/api/sse/fireflies?section=X` maintains persistent connections with tree clients
+3. **Event Types**:
+   - `sync`: Initial full list of fireflies when connection opens
+   - `add`: New firefly released (name added)
+   - `remove`: Firefly removed (admin removed section from user)
+
+### Benefits
+- **Real-time**: Changes appear instantly (no 6-second polling delay)
+- **Bi-directional**: Supports both adding AND removing fireflies
+- **Efficient**: Only sends changes, not full list on every update
+- **Admin Control**: When admin removes a section chip, firefly disappears from tree immediately
+
+### Technical Details
+- SSE manager: `lib/sseManager.ts`
+- SSE endpoint: `app/api/sse/fireflies/route.ts`
+- Debounce: 150ms to avoid duplicate events from WAL mode
+- Heartbeat: Every 30 seconds to keep connections alive
+
 ## File Structure
 
 | Path                  | Description                                                                  |
