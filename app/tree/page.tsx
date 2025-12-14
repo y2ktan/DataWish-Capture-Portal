@@ -14,13 +14,29 @@ export default function TreePage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const name = searchParams.get("name");
+    const section = searchParams.get("section");
+    const token = searchParams.get("token");
     const pathname = usePathname();
     const [loading, setLoading] = useState(true);
-    const [showReleaseButton, setShowReleaseButton] = useState(!!name);
+    const [showReleaseButton, setShowReleaseButton] = useState(!!name && !!section);
+    const [sectionName, setSectionName] = useState<string>("");
     const spawnRef = useRef<(n: string) => void>(() => { });
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
     const dimensionsRef = useRef({ width: 0, height: 0 });
+
+    // Fetch section name for display
+    useEffect(() => {
+        if (section) {
+            fetch("/api/sections")
+                .then(res => res.json())
+                .then(data => {
+                    const found = data.find((s: any) => s.id === parseInt(section));
+                    if (found) setSectionName(found.name);
+                })
+                .catch(console.error);
+        }
+    }, [section]);
 
     useEffect(() => {
         if (!containerRef.current || !labelsRef.current) return;
@@ -216,7 +232,9 @@ export default function TreePage() {
 
         // Fetch fireflies and listen for updates
         const fetchFireflies = () => {
-            fetch('/api/moments')
+            // If section is specified, fetch only fireflies for that section
+            const url = section ? `/api/moments?section=${section}` : '/api/moments';
+            fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     const names = data.names || [];
@@ -253,7 +271,7 @@ export default function TreePage() {
             renderer.dispose();
             if (labelsRef.current) labelsRef.current.innerHTML = '';
         };
-    }, [name]);
+    }, [name, section]);
 
     return (
         <main className="tree-container">
@@ -263,7 +281,12 @@ export default function TreePage() {
                 </div>
             )}
 
-
+            {/* Section indicator */}
+            {sectionName && !loading && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-cyan-900/60 backdrop-blur-md px-4 py-2 rounded-full border border-cyan-400/30">
+                    <span className="text-cyan-100 text-sm font-medium">{sectionName}</span>
+                </div>
+            )}
 
             {name && (
                 <button onClick={() => router.back()} className="back-button">
@@ -276,8 +299,20 @@ export default function TreePage() {
             {showReleaseButton && !loading && (
                 <div className="absolute inset-0 z-40 flex items-end justify-center pb-20 pointer-events-none">
                     <button
-                        onClick={() => {
+                        onClick={async () => {
                             if (name) spawnRef.current(name);
+                            // Mark firefly as released for this section
+                            if (token && section) {
+                                try {
+                                    await fetch(`/api/moments/${token}/checkin`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ sectionId: parseInt(section) })
+                                    });
+                                } catch (err) {
+                                    console.error("Failed to mark firefly as released:", err);
+                                }
+                            }
                             setShowReleaseButton(false);
                         }}
                         className="pointer-events-auto flex flex-col items-center gap-2 bg-cyan-900/40 hover:bg-cyan-800/60 p-4 rounded-3xl shadow-[0_0_30px_rgba(34,211,238,0.6)] transition-all transform hover:scale-105 active:scale-95 border border-cyan-400/50 backdrop-blur-md group"

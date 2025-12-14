@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Moment } from "@/models/Moment";
+import { Section } from "@/models/Section";
 import { processImageWithAphorism } from "@/lib/imageProcessing";
 import crypto from "crypto";
 
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
     const resultUrl = `${req.nextUrl.origin}/result/${downloadToken}`;
     const qrBuffer = await QRCode.toBuffer(resultUrl, { margin: 1, width: 256 });
     const qrCodeUrl = saveQRCodeFromBuffer(qrBuffer);
-    const isFireflyRelease = 0;
+    const isCheckedIn = 0;
 
     const moment = Moment.create({
       englishName,
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       qrCodeUrl,
       aphorism: processed.aphorism,
       downloadToken,
-      isFireflyRelease
+      isCheckedIn
     });
 
     return NextResponse.json(
@@ -142,6 +143,24 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const sectionId = req.nextUrl.searchParams.get("section");
+    
+    // If section is specified, return only fireflies released in that section
+    if (sectionId) {
+      const sectionIdNum = parseInt(sectionId, 10);
+      if (isNaN(sectionIdNum)) {
+        return NextResponse.json(
+          { error: "Invalid section ID" },
+          { status: 400 }
+        );
+      }
+      
+      const fireflies = Section.getReleasedFirefliesBySection(sectionIdNum);
+      const names = fireflies.map(f => f.englishName).filter(Boolean);
+      return NextResponse.json({ names });
+    }
+    
+    // Default behavior: return all moments (backward compatible)
     const moments = Moment.findMany(); // Gets latest 50
     const names = moments.map(m => m.englishName).filter(Boolean);
 

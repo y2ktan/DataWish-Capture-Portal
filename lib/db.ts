@@ -35,7 +35,7 @@ export function getDatabase(): Database.Database {
       downloadToken TEXT NOT NULL UNIQUE,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      isFireflyRelease INTEGER NOT NULL DEFAULT 0
+      isCheckedIn INTEGER NOT NULL DEFAULT 0
     );
     
     CREATE INDEX IF NOT EXISTS idx_downloadToken ON moments(downloadToken);
@@ -55,6 +55,39 @@ export function getDatabase(): Database.Database {
     // Column already exists, ignore
   }
 
+  // Create sections table for multi-section support
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      displayOrder INTEGER DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create section_checkins junction table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS section_checkins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      momentId INTEGER NOT NULL,
+      sectionId INTEGER NOT NULL,
+      isFireflyRelease INTEGER DEFAULT 0,
+      checkedInAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (momentId) REFERENCES moments(id) ON DELETE CASCADE,
+      FOREIGN KEY (sectionId) REFERENCES sections(id) ON DELETE CASCADE,
+      UNIQUE(momentId, sectionId)
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_section_checkins_section ON section_checkins(sectionId);
+    CREATE INDEX IF NOT EXISTS idx_section_checkins_moment ON section_checkins(momentId);
+  `);
+
+  // Insert default section if none exists
+  const sectionCount = db.prepare("SELECT COUNT(*) as count FROM sections").get() as { count: number };
+  if (sectionCount.count === 0) {
+    db.prepare("INSERT INTO sections (name, displayOrder) VALUES (?, ?)").run("Section 1", 1);
+  }
+
   return db;
 }
 
@@ -71,5 +104,20 @@ export interface MomentRow {
   downloadToken: string;
   createdAt: string;
   updatedAt: string;
-  isFireflyRelease: number;  // 0: not released, 1: released
+  isCheckedIn: number;  // 0: not released, 1: released
+}
+
+export interface SectionRow {
+  id: number;
+  name: string;
+  displayOrder: number;
+  createdAt: string;
+}
+
+export interface SectionCheckinRow {
+  id: number;
+  momentId: number;
+  sectionId: number;
+  isFireflyRelease: number;
+  checkedInAt: string;
 }
