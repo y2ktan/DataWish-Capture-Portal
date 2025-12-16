@@ -26,6 +26,7 @@ export default function ResultPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [showQrOverlay, setShowQrOverlay] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,16 +76,14 @@ export default function ResultPage() {
   };
 
   const handleShareWhatsApp = () => {
-    if (!data?.phoneNumber || !data?.qrCodeUrl) return;
+    if (!data?.phoneNumber || !resultUrl) return;
     // Clean phone: KEEP digits only, remove +
     let cleanPhone = data.phoneNumber.replace(/\D/g, "");
     // If Malaysian number starting with 0 → remove leading zeros
     cleanPhone = cleanPhone.replace(/^0+/, "");
-    // Build full QR code URL
-    const qrCodeFullUrl = `${window.location.origin}${data.qrCodeUrl}`;
-    // Encode the message so the link becomes clickable
+    // Encode the message with result page link
     const message = encodeURIComponent(
-      `Hello! Here's your QR code for your memorable moment from the Tzu Chi event. View it here: ${qrCodeFullUrl}`
+      `Hello! Here's your memorable moment from the Tzu Chi event. View it here: ${resultUrl}`
     );
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${message}`;
     window.open(whatsappUrl, "_blank");
@@ -206,7 +205,9 @@ export default function ResultPage() {
               <img
                 src={data.qrCodeUrl}
                 alt="QR code to download photo"
-                className="h-40 w-40"
+                className="h-40 w-40 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setShowQrOverlay(true)}
+                title="Tap to enlarge"
               />
               <p className="text-center text-xs text-slate-500">
                 Ask event staff to scan this QR code or take a screenshot of
@@ -314,7 +315,7 @@ export default function ResultPage() {
               </div>
             )}
 
-            {data.phoneNumber && data.qrCodeUrl && (
+            {data.phoneNumber && resultUrl && (
               <button
                 onClick={handleShareWhatsApp}
                 className="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
@@ -327,7 +328,7 @@ export default function ResultPage() {
                 >
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                 </svg>
-                Send QR Code via WhatsApp
+                Send Link via WhatsApp
               </button>
             )}
 
@@ -355,6 +356,36 @@ export default function ResultPage() {
             )}
           </div>
         </section>
+      )}
+
+      {/* QR Code Fullscreen Overlay */}
+      {showQrOverlay && data?.qrCodeUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setShowQrOverlay(false)}
+        >
+          <div className="relative max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="h-8 w-8"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            <img
+              src={data.qrCodeUrl}
+              alt="QR code enlarged"
+              className="w-full h-auto bg-white rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
       )}
     </main>
   );

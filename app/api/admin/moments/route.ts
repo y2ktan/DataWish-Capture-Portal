@@ -33,7 +33,6 @@ export async function GET(req: NextRequest) {
       : undefined;
 
     const results = Moment.findMany(query);
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
 
     return NextResponse.json(
       results.map((m) => ({
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
         email: m.email,
         createdAt: m.createdAt,
         downloadToken: m.downloadToken,
-        postUrl: `${baseUrl}/result/${m.downloadToken}`,
+        postUrl: `/result/${m.downloadToken}`,
         sections: Section.getCheckinsByMoment(m.id),
       }))
     );
