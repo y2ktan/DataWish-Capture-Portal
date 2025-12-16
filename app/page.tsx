@@ -17,85 +17,19 @@ export default function HomePage() {
       href: "/register",
       label: "Register",
       number: 1,
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          className="h-8 w-8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        >
-          {/* Square outline with open bottom-right */}
-          <path
-            d="M6 6h7.5M6 6v10.5c0 1.1.9 2 2 2H17"
-            strokeLinecap="round"
-          />
-          {/* Pencil */}
-          <path d="M11 13.5l5-5" strokeLinecap="round" />
-          <path
-            d="M16.7 7.8l1-1a1 1 0 011.4 0l.9.9a1 1 0 010 1.4l-1 1-2.3-2.3z"
-            fill="currentColor"
-          />
-          <path d="M10.6 14l.4-1.6 1.2 1.2-1.6.4z" fill="currentColor" />
-        </svg>
-      )
+      icon: <span className="text-3xl leading-none">📝</span>
     },
     {
       href: "/scan",
       label: "Scan",
       number: 2,
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          className="h-8 w-8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        >
-          {/* Camera body */}
-          <rect
-            x="3.5"
-            y="7"
-            width="17"
-            height="11"
-            rx="2.2"
-            ry="2.2"
-          />
-          {/* Top bump */}
-          <path d="M8 7L9.2 5.2C9.5 4.7 9.9 4.5 10.4 4.5h3.2c0.5 0 0.9 0.2 1.2 0.7L16 7" />
-          {/* Lens */}
-          <circle cx="12" cy="12.5" r="3" />
-          {/* Small flash indicator */}
-          <circle cx="6" cy="9.2" r="0.8" fill="currentColor" />
-        </svg>
-      )
+      icon: <span className="text-3xl leading-none mb-2">📷</span>
     },
     {
       href: "/tree",
       label: "Tree",
       number: 3,
-      icon: (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          className="h-8 w-8"
-                fill="none"
-                stroke="currentColor"
-          strokeWidth="1.5"
-              >
-          {/* Simple canopy */}
-                <path
-            d="M8 9c0-2.5 1.9-4.5 4-4.5s4 2 4 4.5c0 2.2-1.6 3.7-4 3.7S8 11.2 8 9z"
-            fill="currentColor"
-                />
-          {/* Trunk */}
-          <path d="M11 12.7v4.8M13 12.7v4.8" strokeLinecap="round" />
-          {/* Ground */}
-          <path d="M7.5 18.5h9" strokeLinecap="round" />
-              </svg>
-      )
+      icon: <span className="text-3xl leading-none">🌳</span>
     }
   ];
 
@@ -133,11 +67,11 @@ export default function HomePage() {
                 <span className="text-sm font-semibold leading-tight">
                   {action.label}
                 </span>
-          </div>
+              </div>
             </Link>
           ))}
-          </div>
-          </div>
+        </div>
+      </div>
     </main>
   );
 }
