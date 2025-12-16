@@ -23,7 +23,7 @@ export default function ScanPage() {
 
     // UI state to know if we are currently scanning.
     const [isScanning, setIsScanning] = useState(true);
-    
+
     // Camera facing mode: "environment" = back camera, "user" = front camera
     const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
 
@@ -90,15 +90,19 @@ export default function ScanPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScanning]);
 
-    // Cleanup function when component unmounts or stops scanning
+    // Cleanup function when component unmounts
     useEffect(() => {
         return () => {
-            if (scannerRef.current) {
-                try {
-                    scannerRef.current.stop().catch(console.error);
-                } catch (e) {
-                    console.error("Failed to stop scanner", e);
-                }
+            const scanner = scannerRef.current;
+            if (scanner) {
+                // Return promise to ensure cleanup where possible, though unmount is synchronous
+                scanner.stop()
+                    .then(() => scanner.clear())
+                    .catch((err) => {
+                        console.warn("Failed to stop scanner during cleanup", err);
+                        // Try to clear anyway
+                        try { scanner.clear(); } catch (e) { }
+                    });
                 scannerRef.current = null;
             }
         };
@@ -147,12 +151,12 @@ export default function ScanPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ sectionId })
             });
-            
+
             if (!checkinRes.ok) {
                 const json = await checkinRes.json();
                 throw new Error(json.error || "Failed to check in");
             }
-            
+
             // Navigate to tree page with section
             router.push(`/tree?section=${sectionId}&name=${encodeURIComponent(momentData.englishName || "")}&token=${validToken}`);
         } catch (err) {
