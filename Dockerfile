@@ -59,6 +59,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/onnxruntime-node ./n
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/sharp ./node_modules/sharp
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@napi-rs ./node_modules/@napi-rs
 
+# Create data directory for SQLite database with correct permissions
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
 USER nextjs
 
 EXPOSE 3000
