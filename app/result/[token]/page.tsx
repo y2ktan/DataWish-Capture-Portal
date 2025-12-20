@@ -156,31 +156,48 @@ export default function ResultPage() {
   };
 
   return (
-    <main className="flex flex-1 flex-col gap-4">
-      <header className="pt-2">
-        <h1 className="text-center text-2xl font-semibold text-tzuchiBlue">
+    <main className="relative flex flex-1 flex-col gap-4 min-h-screen px-4 py-6" style={{ backgroundColor: '#0a0a0f' }}>
+      {/* Grid background */}
+      <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{
+        backgroundImage: `linear-gradient(to right, #00A3E0 1px, transparent 1px), linear-gradient(to bottom, #00A3E0 1px, transparent 1px)`,
+        backgroundSize: '60px 60px'
+      }} />
+      
+      {/* Corner accents */}
+      <div className="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+      <div className="absolute top-4 right-4 w-6 h-6 border-r-2 border-t-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+      <div className="absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+      <div className="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+
+      <header className="relative z-10 pt-2">
+        <h1 className="text-center text-2xl font-semibold tracking-wide" style={{ 
+          background: 'linear-gradient(135deg, #0066B3, #00A3E0, #6DD5ED)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
           Your Memorable Moment
         </h1>
-        <p className="mt-1 text-center text-sm text-slate-600">
+        <p className="mt-1 text-center text-sm tracking-wider" style={{ color: '#6DD5ED', opacity: 0.8 }}>
           Scan the QR code or long-press the photo to save it to your device.
         </p>
       </header>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="relative z-10 rounded-md border px-3 py-2 text-sm" style={{ borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)', color: '#ff6b6b' }}>
           {error}
         </div>
       )}
 
       {!error && !data && (
-        <section className="mt-2 flex flex-1 flex-col items-center justify-center rounded-xl bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-700">Loading your photo…</p>
+        <section className="relative z-10 mt-2 flex flex-1 flex-col items-center justify-center rounded-xl p-4" style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}>
+          <div className="w-10 h-10 rounded-full animate-pulse mb-3" style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.5)' }} />
+          <p className="text-sm" style={{ color: '#6DD5ED' }}>Loading your photo…</p>
         </section>
       )}
 
       {data && (
-        <section className="mt-2 flex flex-1 flex-col gap-4 rounded-xl bg-white p-4 shadow-sm">
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-black">
+        <section className="relative z-10 mt-2 flex flex-1 flex-col gap-4 rounded-xl p-4" style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}>
+          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg" style={{ border: '2px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.2)' }}>
             <img
               src={
                 data.photoAssetUrl.startsWith("http")
@@ -191,10 +208,10 @@ export default function ResultPage() {
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm text-slate-700">
-            <p className="font-medium">Jing Si Aphorism</p>
+          <div className="rounded-md px-3 py-3 text-center text-sm" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.2)' }}>
+            <p className="font-medium" style={{ color: '#00A3E0' }}>Jing Si Aphorism</p>
             {data.aphorism.split(" / ").map((line, index) => (
-              <p key={index} className="mt-1 italic">
+              <p key={index} className="mt-1 italic" style={{ color: '#6DD5ED' }}>
                 &ldquo;{line}&rdquo;
               </p>
             ))}
@@ -209,22 +226,24 @@ export default function ResultPage() {
                 onClick={() => setShowQrOverlay(true)}
                 title="Tap to enlarge"
               />
-              <p className="text-center text-xs text-slate-500">
+              <p className="text-center text-xs" style={{ color: 'rgba(109,213,237,0.7)' }}>
                 Ask event staff to scan this QR code or take a screenshot of
                 it. It links directly to this page.
               </p>
               <div className="mt-2 w-full">
-                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-md px-3 py-2" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)' }}>
                   <input
                     type="text"
                     readOnly
                     value={`${window.location.origin}${data.qrCodeUrl}`}
-                    className="flex-1 bg-transparent text-xs text-slate-700 outline-none"
+                    className="flex-1 bg-transparent text-xs outline-none"
+                    style={{ color: '#6DD5ED' }}
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />
                   <button
                     onClick={copyUrlToClipboard}
-                    className="rounded px-2 py-1 text-xs text-slate-600 hover:bg-slate-200"
+                    className="rounded px-2 py-1 text-xs transition-all hover:scale-110"
+                    style={{ color: '#00A3E0' }}
                     title="Copy URL"
                   >
                     <svg
@@ -251,7 +270,7 @@ export default function ResultPage() {
             {data.email && (
               <div className="flex flex-col gap-2">
                 {emailSent ? (
-                  <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                  <div className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'rgba(168,230,207,0.5)', backgroundColor: 'rgba(168,230,207,0.1)', color: '#A8E6CF' }}>
                     Email sent successfully to {data.email}!
                   </div>
                 ) : (
@@ -259,7 +278,8 @@ export default function ResultPage() {
                     <button
                       onClick={handleSendEmail}
                       disabled={sendingEmail}
-                      className="inline-flex items-center justify-center gap-2 rounded-md bg-tzuchiBlue px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+                      style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.4)' }}
                     >
                       {sendingEmail ? (
                         <>
@@ -306,7 +326,7 @@ export default function ResultPage() {
                       )}
                     </button>
                     {emailError && (
-                      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <div className="rounded-md border px-3 py-2 text-sm" style={{ borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)', color: '#ff6b6b' }}>
                         {emailError}
                       </div>
                     )}
@@ -318,7 +338,8 @@ export default function ResultPage() {
             {data.phoneNumber && resultUrl && (
               <button
                 onClick={handleShareWhatsApp}
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
+                className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-[1.02]"
+                style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -335,7 +356,8 @@ export default function ResultPage() {
             {data.photoAssetUrl && resultUrl && (
               <button
                 onClick={handleShare}
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+                className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-[1.02]"
+                style={{ border: '1px solid rgba(0,163,224,0.5)', backgroundColor: 'rgba(0,163,224,0.1)', color: '#00A3E0' }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -361,7 +383,8 @@ export default function ResultPage() {
       {/* QR Code Fullscreen Overlay */}
       {showQrOverlay && data?.qrCodeUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(10,10,15,0.95)' }}
           onClick={() => setShowQrOverlay(false)}
         >
           <div className="relative max-w-md w-full" onClick={(e) => e.stopPropagation()}>
@@ -370,8 +393,9 @@ export default function ResultPage() {
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth={2}
-                stroke="currentColor"
-                className="h-8 w-8"
+                stroke="#00A3E0"
+                className="h-8 w-8 absolute -top-10 right-0 cursor-pointer hover:scale-110 transition-transform"
+                onClick={() => setShowQrOverlay(false)}
               >
                 <path
                   strokeLinecap="round"
@@ -382,7 +406,8 @@ export default function ResultPage() {
             <img
               src={data.qrCodeUrl}
               alt="QR code enlarged"
-              className="w-full h-auto bg-white rounded-lg shadow-2xl"
+              className="w-full h-auto bg-white rounded-lg"
+              style={{ boxShadow: '0 0 40px rgba(0,163,224,0.3)' }}
             />
           </div>
         </div>

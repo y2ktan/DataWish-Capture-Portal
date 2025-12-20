@@ -426,67 +426,88 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex flex-1 flex-col gap-4">
-      <header className="pt-2">
-        <h1 className="text-center text-2xl font-semibold text-tzuchiBlue">
+    <main className="relative flex flex-1 flex-col gap-4 min-h-screen px-4 py-6" style={{ backgroundColor: '#0a0a0f' }}>
+      {/* Grid background */}
+      <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{
+        backgroundImage: `linear-gradient(to right, #00A3E0 1px, transparent 1px), linear-gradient(to bottom, #00A3E0 1px, transparent 1px)`,
+        backgroundSize: '60px 60px'
+      }} />
+      
+      {/* Corner accents */}
+      <div className="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+      <div className="absolute top-4 right-4 w-6 h-6 border-r-2 border-t-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+      <div className="absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+      <div className="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+
+      <header className="relative z-10 pt-2">
+        <h1 className="text-center text-2xl font-semibold tracking-wide" style={{ 
+          background: 'linear-gradient(135deg, #0066B3, #00A3E0, #6DD5ED)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
           Memorable Moment Capture
         </h1>
-        <p className="mt-1 text-center text-sm text-slate-600">
+        <p className="mt-1 text-center text-sm tracking-wider" style={{ color: '#6DD5ED', opacity: 0.8 }}>
           Capture your special moment, personalize it, and receive a QR code to
           download.
         </p>
       </header>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="relative z-10 rounded-md border px-3 py-2 text-sm" style={{ borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)', color: '#ff6b6b' }}>
           {error}
         </div>
       )}
 
       {step === "form" && (
         <form
-          className="mt-2 flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm"
+          className="relative z-10 mt-2 flex flex-col gap-3 rounded-xl p-4" 
+          style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}
           onSubmit={handleStartCapture}
         >
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">
-              English Name <span className="text-red-500">*</span>
+            <label className="text-sm font-medium" style={{ color: '#6DD5ED' }}>
+              English Name <span style={{ color: '#ff6b6b' }}>*</span>
             </label>
             <input
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+              className="rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1" 
+              style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)', color: '#fff' }}
               value={englishName}
               onChange={(e) => setEnglishName(e.target.value)}
               required
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Chinese Name</label>
+            <label className="text-sm font-medium" style={{ color: '#6DD5ED' }}>Chinese Name</label>
             <input
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+              className="rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1" 
+              style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)', color: '#fff' }}
               value={chineseName}
               onChange={(e) => setChineseName(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">
-              Phone Number <span className="text-red-500">*</span>
+            <label className="text-sm font-medium" style={{ color: '#6DD5ED' }}>
+              Phone Number <span style={{ color: '#ff6b6b' }}>*</span>
             </label>
             <div className="flex gap-2">
               <select
-                className="w-32 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+                className="w-32 rounded-md px-2 py-2 text-sm focus:outline-none focus:ring-1" 
+                style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)', color: '#fff' }}
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
               >
                 {Object.entries(countryCodes)
                   .sort((a, b) => a[0].localeCompare(b[0]))
                   .map(([country, code]) => (
-                    <option key={country} value={code}>
+                    <option key={country} value={code} style={{ backgroundColor: '#0a0a0f' }}>
                       +{code} ({country})
                     </option>
                   ))}
               </select>
               <input
-                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+                className="flex-1 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1" 
+                style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)', color: '#fff' }}
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
@@ -496,9 +517,10 @@ export default function RegisterPage() {
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Email</label>
+            <label className="text-sm font-medium" style={{ color: '#6DD5ED' }}>Email</label>
             <input
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+              className="rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1" 
+              style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)', color: '#fff' }}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               inputMode="email"
@@ -507,7 +529,8 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            className="mt-2 inline-flex items-center justify-center rounded-md bg-tzuchiBlue px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800"
+            className="mt-2 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.4)' }}
           >
             Continue to Camera
           </button>
@@ -515,15 +538,15 @@ export default function RegisterPage() {
       )}
 
       {step === "capture" && (
-        <section className="mt-2 flex flex-1 flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">
+        <section className="relative z-10 mt-2 flex flex-1 flex-col gap-3 rounded-xl p-4" style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm" style={{ color: '#6DD5ED' }}>
               Center yourself in the frame, then tap &quot;Capture&quot;.
-              <span className="block text-xs text-slate-400 mt-1">
+              <span className="block text-xs mt-1" style={{ color: 'rgba(109,213,237,0.6)' }}>
                 Pinch or scroll to zoom • Shift+drag to pan
               </span>
             </p>
-            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'rgba(0,163,224,0.2)', color: '#00A3E0' }}>
               {isLandscape() ? "Landscape" : "Portrait"}
             </span>
           </div>
@@ -551,14 +574,16 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => setStep("form")}
-              className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+              className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105"
+              style={{ border: '1px solid rgba(0,163,224,0.5)', color: '#00A3E0', backgroundColor: 'rgba(0,163,224,0.1)' }}
             >
               Back
             </button>
             <button
               type="button"
               onClick={handleManualRotate}
-              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+              className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105"
+              style={{ border: '1px solid rgba(0,163,224,0.5)', color: '#00A3E0', backgroundColor: 'rgba(0,163,224,0.1)' }}
               title="Rotate 90°"
             >
               <svg
@@ -579,13 +604,14 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={handleSwitchCamera}
-              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+              className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105"
+              style={{ border: '1px solid rgba(0,163,224,0.5)', color: '#00A3E0', backgroundColor: 'rgba(0,163,224,0.1)' }}
               title="Switch camera"
             >
             <svg width="24px" height="24px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <g>
                     <path fill="none" d="M0 0h24v24H0z"/>
-                    <path d="M9.828 5l-2 2H4v12h16V7h-3.828l-2-2H9.828zM9 3h6l2 2h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4l2-2zm.64 4.53a5.5 5.5 0 0 1 6.187 8.92L13.75 12.6h1.749l.001-.1a3.5 3.5 0 0 0-4.928-3.196L9.64 7.53zm4.677 9.96a5.5 5.5 0 0 1-6.18-8.905L10.25 12.5H8.5a3.5 3.5 0 0 0 4.886 3.215l.931 1.774z"/>
+                    <path fill="#00A3E0" d="M9.828 5l-2 2H4v12h16V7h-3.828l-2-2H9.828zM9 3h6l2 2h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4l2-2zm.64 4.53a5.5 5.5 0 0 1 6.187 8.92L13.75 12.6h1.749l.001-.1a3.5 3.5 0 0 0-4.928-3.196L9.64 7.53zm4.677 9.96a5.5 5.5 0 0 1-6.18-8.905L10.25 12.5H8.5a3.5 3.5 0 0 0 4.886 3.215l.931 1.774z"/>
                 </g>
             </svg>
 
@@ -594,7 +620,8 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={handleTakePhoto}
-              className="inline-flex flex-1 items-center justify-center rounded-md bg-tzuchiBlue px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800"
+              className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.4)' }}
             >
               Capture
             </button>
@@ -603,8 +630,8 @@ export default function RegisterPage() {
       )}
 
       {step === "review" && capturedDataUrl && (
-        <section className="mt-2 flex flex-1 flex-col gap-3 rounded-xl bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-600">
+        <section className="relative z-10 mt-2 flex flex-1 flex-col gap-3 rounded-xl p-4" style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}>
+          <p className="text-sm" style={{ color: '#6DD5ED' }}>
             Review your photo. If you&apos;re happy, proceed to personalize and
             generate your QR code.
           </p>
@@ -621,14 +648,16 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={handleRecapture}
-              className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+              className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105"
+              style={{ border: '1px solid rgba(0,163,224,0.5)', color: '#00A3E0', backgroundColor: 'rgba(0,163,224,0.1)' }}
             >
               Recapture
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              className="inline-flex flex-1 items-center justify-center rounded-md bg-tzuchiBlue px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+              className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.4)' }}
             >
               Confirm &amp; Generate
             </button>
@@ -637,11 +666,12 @@ export default function RegisterPage() {
       )}
 
       {step === "submitting" && (
-        <section className="mt-2 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl bg-white p-4 text-center shadow-sm">
-          <p className="text-sm text-slate-700">
+        <section className="relative z-10 mt-2 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl p-4 text-center" style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}>
+          <div className="w-12 h-12 rounded-full animate-pulse" style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 30px rgba(0,163,224,0.6)' }} />
+          <p className="text-sm" style={{ color: '#6DD5ED' }}>
             Processing your photo with a Jing Si aphorism…
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs" style={{ color: 'rgba(109,213,237,0.6)' }}>
             This usually takes less than 60 seconds.
           </p>
         </section>

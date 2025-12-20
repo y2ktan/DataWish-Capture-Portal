@@ -178,28 +178,45 @@ export default function ScanPage() {
     };
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4">
-            <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-6 shadow-xl">
+        <main className="relative flex min-h-screen flex-col items-center justify-center p-4" style={{ backgroundColor: '#0a0a0f' }}>
+            {/* Grid background */}
+            <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{
+                backgroundImage: `linear-gradient(to right, #00A3E0 1px, transparent 1px), linear-gradient(to bottom, #00A3E0 1px, transparent 1px)`,
+                backgroundSize: '60px 60px'
+            }} />
+            
+            {/* Corner accents */}
+            <div className="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+            <div className="absolute top-4 right-4 w-6 h-6 border-r-2 border-t-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+            <div className="absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+            <div className="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 opacity-40" style={{ borderColor: '#00A3E0' }} />
+
+            <div className="relative z-10 w-full max-w-md space-y-6 rounded-2xl p-6" style={{ backgroundColor: 'rgba(10,10,15,0.9)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 30px rgba(0,163,224,0.15)' }}>
                 <header className="text-center">
-                    <h1 className="text-2xl font-bold text-tzuchiBlue">Result Scanner</h1>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <h1 className="text-2xl font-bold tracking-wide" style={{ 
+                        background: 'linear-gradient(135deg, #0066B3, #00A3E0, #6DD5ED)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                    }}>Result Scanner</h1>
+                    <p className="mt-2 text-sm" style={{ color: '#6DD5ED', opacity: 0.8 }}>
                         Select a section, then scan a participant's QR code.
                     </p>
                 </header>
 
                 {/* Section Selection - Always visible at top */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)' }}>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#6DD5ED' }}>
                         Select Section for Check-in
                     </label>
                     <select
                         value={selectedSection || ""}
                         onChange={(e) => setSelectedSection(Number(e.target.value))}
                         disabled={processing}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue disabled:opacity-50"
+                        className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 disabled:opacity-50"
+                        style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.5)', color: '#fff' }}
                     >
                         {sections.map((section) => (
-                            <option key={section.id} value={section.id}>
+                            <option key={section.id} value={section.id} style={{ backgroundColor: '#0a0a0f' }}>
                                 {section.name}
                             </option>
                         ))}
@@ -209,12 +226,13 @@ export default function ScanPage() {
                 {/* QR Scanner */}
                 {isScanning && (
                     <>
-                        <div className="overflow-hidden rounded-xl border-2 border-slate-200">
+                        <div className="overflow-hidden rounded-xl" style={{ border: '2px solid rgba(0,163,224,0.5)', boxShadow: '0 0 20px rgba(0,163,224,0.2)' }}>
                             <div id="reader" className="w-full"></div>
                         </div>
                         <button
                             onClick={handleSwitchCamera}
-                            className="w-full rounded-xl border-2 border-slate-300 bg-white py-3 font-semibold text-slate-700 hover:bg-slate-50 transition-colors active:scale-95 flex items-center justify-center gap-2"
+                            className="w-full rounded-xl py-3 font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 hover:scale-[1.02]"
+                            style={{ border: '1px solid rgba(0,163,224,0.5)', backgroundColor: 'rgba(0,163,224,0.1)', color: '#00A3E0' }}
                         >
                             <span className="text-lg">🔄</span>
                             Switch to {facingMode === "environment" ? "Front" : "Back"} Camera
@@ -224,24 +242,25 @@ export default function ScanPage() {
 
                 {/* Processing state */}
                 {processing && (
-                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-6 text-center">
-                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-3xl animate-pulse">
-                            ⏳
+                    <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)' }}>
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full animate-pulse" style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 30px rgba(0,163,224,0.6)' }}>
+                            <span className="text-2xl">⏳</span>
                         </div>
-                        <p className="text-blue-900 font-medium">Processing check-in...</p>
-                        <p className="mt-2 text-xs text-slate-400 break-all">{scanResult}</p>
+                        <p className="font-medium" style={{ color: '#6DD5ED' }}>Processing check-in...</p>
+                        <p className="mt-2 text-xs break-all" style={{ color: 'rgba(109,213,237,0.6)' }}>{scanResult}</p>
                     </div>
                 )}
 
                 {/* Error state */}
                 {error && !processing && (
-                    <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center">
-                        <div className="mx-auto mb-4 text-3xl text-red-500">⚠️</div>
-                        <p className="mb-4 text-red-700">{error}</p>
-                        <p className="mb-4 text-xs text-slate-400 break-all">{scanResult}</p>
+                    <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)' }}>
+                        <div className="mx-auto mb-4 text-3xl">⚠️</div>
+                        <p className="mb-4" style={{ color: '#ff6b6b' }}>{error}</p>
+                        <p className="mb-4 text-xs break-all" style={{ color: 'rgba(109,213,237,0.6)' }}>{scanResult}</p>
                         <button
                             onClick={handleReset}
-                            className="w-full rounded-xl border border-red-200 bg-white py-2 font-medium text-red-600 hover:bg-red-50"
+                            className="w-full rounded-xl py-2 font-medium transition-all hover:scale-[1.02]"
+                            style={{ border: '1px solid rgba(255,107,107,0.5)', backgroundColor: 'rgba(255,107,107,0.1)', color: '#ff6b6b' }}
                         >
                             Try Again
                         </button>
