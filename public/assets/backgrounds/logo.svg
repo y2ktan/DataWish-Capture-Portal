@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" fill="none">
+  <defs>
+    <!-- Gradient for futuristic feel -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0066B3"/>
+      <stop offset="50%" style="stop-color:#00A3E0"/>
+      <stop offset="100%" style="stop-color:#6DD5ED"/>
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00A3E0"/>
+      <stop offset="100%" style="stop-color:#A8E6CF"/>
+    </linearGradient>
+    <!-- Glow effect -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="400" fill="#0a0a0f"/>
+  
+  <!-- Subtle grid pattern for tech feel -->
+  <g opacity="0.08">
+    <line x1="0" y1="100" x2="800" y2="100" stroke="#00A3E0" stroke-width="0.5"/>
+    <line x1="0" y1="200" x2="800" y2="200" stroke="#00A3E0" stroke-width="0.5"/>
+    <line x1="0" y1="300" x2="800" y2="300" stroke="#00A3E0" stroke-width="0.5"/>
+    <line x1="200" y1="0" x2="200" y2="400" stroke="#00A3E0" stroke-width="0.5"/>
+    <line x1="400" y1="0" x2="400" y2="400" stroke="#00A3E0" stroke-width="0.5"/>
+    <line x1="600" y1="0" x2="600" y2="400" stroke="#00A3E0" stroke-width="0.5"/>
+  </g>
+  
+  <!-- Main Logo Group -->
+  <g transform="translate(400, 170)">
+    <!-- Outer camera frame - rounded rectangle -->
+    <rect x="-70" y="-55" width="140" height="110" rx="16" ry="16" 
+          fill="none" stroke="url(#primaryGradient)" stroke-width="3" filter="url(#glow)"/>
+    
+    <!-- Camera lens - outer circle -->
+    <circle cx="0" cy="0" r="38" fill="none" stroke="url(#primaryGradient)" stroke-width="2.5" filter="url(#glow)"/>
+    
+    <!-- Camera lens - inner circle with AI symbol -->
+    <circle cx="0" cy="0" r="24" fill="none" stroke="url(#accentGradient)" stroke-width="2"/>
+    
+    <!-- AI neural network nodes inside lens -->
+    <circle cx="0" cy="-10" r="4" fill="#00A3E0" filter="url(#glow)"/>
+    <circle cx="-10" cy="8" r="4" fill="#00A3E0" filter="url(#glow)"/>
+    <circle cx="10" cy="8" r="4" fill="#00A3E0" filter="url(#glow)"/>
+    
+    <!-- Neural connections -->
+    <line x1="0" y1="-10" x2="-10" y2="8" stroke="#00A3E0" stroke-width="1.5" opacity="0.8"/>
+    <line x1="0" y1="-10" x2="10" y2="8" stroke="#00A3E0" stroke-width="1.5" opacity="0.8"/>
+    <line x1="-10" y1="8" x2="10" y2="8" stroke="#00A3E0" stroke-width="1.5" opacity="0.8"/>
+    
+    <!-- Camera flash/viewfinder accent -->
+    <rect x="-55" y="-45" width="18" height="10" rx="3" fill="url(#accentGradient)" opacity="0.9"/>
+    
+    <!-- Speed indicator - orbiting arc -->
+    <path d="M -48 0 A 48 48 0 0 1 0 -48" fill="none" stroke="url(#accentGradient)" 
+          stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="0" cy="-48" r="3" fill="#6DD5ED" filter="url(#glow)"/>
+    
+    <!-- Share/wireless signal arcs -->
+    <g transform="translate(55, -30)">
+      <path d="M 0 15 A 12 12 0 0 1 0 -5" fill="none" stroke="#00A3E0" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+      <path d="M 6 18 A 18 18 0 0 1 6 -8" fill="none" stroke="#00A3E0" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+      <path d="M 12 21 A 24 24 0 0 1 12 -11" fill="none" stroke="#00A3E0" stroke-width="2" stroke-linecap="round" opacity="0.25"/>
+    </g>
+  </g>
+  
+  <!-- Text: Brand Name -->
+  <text x="400" y="290" text-anchor="middle" 
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+        font-size="32" font-weight="600" letter-spacing="8" fill="url(#primaryGradient)">
+    DATAWISH
+  </text>
+  
+  <!-- Tagline -->
+  <text x="400" y="325" text-anchor="middle" 
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+        font-size="12" font-weight="400" letter-spacing="3" fill="#6DD5ED" opacity="0.8">
+    AI-POWERED MOMENTS
+  </text>
+  
+  <!-- Decorative corner accents -->
+  <path d="M 30 30 L 30 50 M 30 30 L 50 30" stroke="url(#accentGradient)" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 770 30 L 770 50 M 770 30 L 750 30" stroke="url(#accentGradient)" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 30 370 L 30 350 M 30 370 L 50 370" stroke="url(#accentGradient)" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 770 370 L 770 350 M 770 370 L 750 370" stroke="url(#accentGradient)" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+</svg>
