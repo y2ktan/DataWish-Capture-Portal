@@ -75,15 +75,15 @@ function TreePageInner() {
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
 
-        // Post-processing (Avatar-like glow)
+        // Post-processing (Eywa bioluminescent glow)
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
         composer.addPass(
             new UnrealBloomPass(
                 new THREE.Vector2(width, height),
-                0.9, // strength
-                0.4, // radius
-                0.75 // threshold
+                1.5, // strength - increased for more glow
+                0.6, // radius - wider bloom
+                0.3  // threshold - lower to catch more glowing elements
             )
         );
 
@@ -108,7 +108,7 @@ function TreePageInner() {
 
 
         const spawnFirefly = (targetName: string) => {
-            const { group, glare, light } = createFireflyObject(glareMat);
+            const { group, glare, innerGlare, light, wingL, wingR, abdomen } = createFireflyObject(glareMat);
             scene.add(group);
 
             const labelDiv = document.createElement('div');
@@ -121,9 +121,14 @@ function TreePageInner() {
             const ff = {
                 obj: group,
                 glare: glare,
+                innerGlare: innerGlare,
                 light: light,
+                wingL: wingL,
+                wingR: wingR,
+                abdomen: abdomen,
                 label: labelDiv,
                 blinkOffset: Math.random() * 100,
+                wingPhase: Math.random() * Math.PI * 2,
                 state: 'FLYING',
                 target: new THREE.Vector3(),
                 timer: 0,
@@ -158,16 +163,35 @@ function TreePageInner() {
 
             fireflies.forEach(ff => {
                 const blink = Math.sin(time * 3 + ff.blinkOffset);
+                const blinkSmooth = (blink + 1) / 2; // 0 to 1 smooth
 
-                // Brighter blink logic
-                const isBlinking = blink > 0.5; // Wider blink window
-                const glareOpacity = isBlinking ? 1 : 0.4;
-                const glareScale = isBlinking ? 2.5 : 1.5; // Pulse larger
-                const lightIntensity = isBlinking ? 4.0 : 0.5; // Much brighter light
+                // Smooth glow pulsing
+                const glareOpacity = 0.5 + blinkSmooth * 0.5;
+                const glareScale = 6 + blinkSmooth * 4;
+                const innerGlareScale = 2 + blinkSmooth * 2;
+                const lightIntensity = 0.5 + blinkSmooth * 3.5;
 
                 ff.glare.material.opacity = glareOpacity;
                 ff.glare.scale.setScalar(glareScale);
+                if (ff.innerGlare) {
+                    ff.innerGlare.material.opacity = 0.7 + blinkSmooth * 0.3;
+                    ff.innerGlare.scale.setScalar(innerGlareScale);
+                }
                 ff.light.intensity = lightIntensity;
+
+                // Abdomen glow color shift (warm to bright)
+                if (ff.abdomen) {
+                    const abdomenMat = ff.abdomen.material as THREE.MeshBasicMaterial;
+                    const r = 1.0;
+                    const g = 0.7 + blinkSmooth * 0.3;
+                    const b = 0.3 + blinkSmooth * 0.4;
+                    abdomenMat.color.setRGB(r, g, b);
+                }
+
+                // Wing flutter animation
+                const wingFlutter = Math.sin(time * 25 + ff.wingPhase) * 0.4;
+                if (ff.wingL) ff.wingL.rotation.z = Math.PI / 5 + wingFlutter;
+                if (ff.wingR) ff.wingR.rotation.z = -Math.PI / 5 - wingFlutter;
 
                 const pos = ff.obj.position;
                 const dist = pos.distanceTo(ff.target);
@@ -383,8 +407,8 @@ function TreePageInner() {
 
             {/* Section indicator */}
             {sectionName && !loading && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-cyan-900/60 backdrop-blur-md px-4 py-2 rounded-full border border-cyan-400/30">
-                    <span className="text-cyan-100 text-sm font-medium">{sectionName}</span>
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 backdrop-blur-md px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(100, 34, 170, 0.4)', border: '1px solid rgba(170, 68, 255, 0.4)', boxShadow: '0 0 20px rgba(170, 68, 255, 0.3)' }}>
+                    <span className="text-sm font-medium" style={{ color: '#cc88ff' }}>{sectionName}</span>
                 </div>
             )}
 
@@ -415,22 +439,23 @@ function TreePageInner() {
                             }
                             setShowReleaseButton(false);
                         }}
-                        className="pointer-events-auto flex flex-col items-center gap-2 bg-cyan-900/40 hover:bg-cyan-800/60 p-4 rounded-3xl shadow-[0_0_30px_rgba(34,211,238,0.6)] transition-all transform hover:scale-105 active:scale-95 border border-cyan-400/50 backdrop-blur-md group"
+                        className="pointer-events-auto flex flex-col items-center gap-2 p-4 rounded-3xl transition-all transform hover:scale-105 active:scale-95 backdrop-blur-md group"
+                        style={{ backgroundColor: 'rgba(100, 34, 170, 0.5)', border: '1px solid rgba(170, 68, 255, 0.5)', boxShadow: '0 0 30px rgba(170, 68, 255, 0.6), 0 0 60px rgba(136, 34, 204, 0.3)' }}
                         aria-label={`Release ${name}`}
                         title={`Release ${name}`}
                     >
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_8px_rgba(0,255,255,0.8)]">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 8px rgba(170, 68, 255, 0.8))' }}>
                             {/* Glow Aura */}
-                            <circle cx="12" cy="15" r="8" className="fill-cyan-400/20 group-hover:fill-cyan-400/40 transition-colors duration-500 blur-sm" />
+                            <circle cx="12" cy="15" r="8" fill="rgba(170, 68, 255, 0.2)" className="group-hover:fill-purple-400/40 transition-colors duration-500" />
                             {/* Wings */}
-                            <path d="M12 13C10 9 6 10 6 12C6 14 10 15 12 15" fill="rgba(200, 240, 255, 0.4)" stroke="rgba(255,255,255,0.8)" strokeWidth="0.5" className="origin-center animate-[wingFlap_0.2s_ease-in-out_infinite]" style={{ animationPlayState: 'paused' }} />
-                            <path d="M12 13C14 9 18 10 18 12C18 14 14 15 12 15" fill="rgba(200, 240, 255, 0.4)" stroke="rgba(255,255,255,0.8)" strokeWidth="0.5" className="origin-center animate-[wingFlap_0.2s_ease-in-out_infinite]" style={{ animationPlayState: 'paused' }} />
+                            <path d="M12 13C10 9 6 10 6 12C6 14 10 15 12 15" fill="rgba(200, 150, 255, 0.4)" stroke="rgba(255,255,255,0.8)" strokeWidth="0.5" />
+                            <path d="M12 13C14 9 18 10 18 12C18 14 14 15 12 15" fill="rgba(200, 150, 255, 0.4)" stroke="rgba(255,255,255,0.8)" strokeWidth="0.5" />
                             {/* Body */}
-                            <ellipse cx="12" cy="15" rx="2.5" ry="4" fill="#E0FFFF" />
+                            <ellipse cx="12" cy="15" rx="2.5" ry="4" fill="#E0D0FF" />
                             {/* Bulb */}
-                            <circle cx="12" cy="17" r="2.5" fill="#00FFFF" className="animate-pulse" />
+                            <circle cx="12" cy="17" r="2.5" fill="#CC88FF" className="animate-pulse" />
                         </svg>
-                        <span className="text-cyan-100 font-semibold text-sm tracking-wide text-shadow shadow-cyan-500/50">
+                        <span className="font-semibold text-sm tracking-wide" style={{ color: '#cc88ff', textShadow: '0 0 10px rgba(170, 68, 255, 0.8)' }}>
                             {name}
                         </span>
                     </button>
