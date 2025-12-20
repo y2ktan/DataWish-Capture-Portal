@@ -436,7 +436,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         new THREE.Color(COLORS.LEAF_BLUE)
     ];
 
-    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 2000);
+    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 3000);
     const canopyGroup = new THREE.Group();
     canopyGroup.name = 'canopyLeaves';
 
