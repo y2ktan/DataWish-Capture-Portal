@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -108,7 +108,7 @@ function TreePageInner() {
 
 
         const spawnFirefly = (targetName: string) => {
-            const { group, glare, light } = createFireflyObject(glareMat);
+            const { group, glare, outerGlare, light, wingL, wingR, abdomen, abdomenMat } = createFireflyObject(glareMat);
             scene.add(group);
 
             const labelDiv = document.createElement('div');
@@ -121,9 +121,14 @@ function TreePageInner() {
             const ff = {
                 obj: group,
                 glare: glare,
+                outerGlare: outerGlare,
                 light: light,
+                wingL: wingL,
+                wingR: wingR,
+                abdomen: abdomen,
+                abdomenMat: abdomenMat,
                 label: labelDiv,
-                blinkOffset: Math.random() * 100,
+                blinkOffset: Math.random() * Math.PI * 2,
                 state: 'FLYING',
                 target: new THREE.Vector3(),
                 timer: 0,
@@ -156,18 +161,16 @@ function TreePageInner() {
                 boat.rotation.y = boatBaseRotY + time * -0.03;
             }
 
+            // Animate tendrils waving in breeze
+            updateTendrils(scene, time);
+
             fireflies.forEach(ff => {
-                const blink = Math.sin(time * 3 + ff.blinkOffset);
-
-                // Brighter blink logic
-                const isBlinking = blink > 0.5; // Wider blink window
-                const glareOpacity = isBlinking ? 1 : 0.4;
-                const glareScale = isBlinking ? 2.5 : 1.5; // Pulse larger
-                const lightIntensity = isBlinking ? 4.0 : 0.5; // Much brighter light
-
-                ff.glare.material.opacity = glareOpacity;
-                ff.glare.scale.setScalar(glareScale);
-                ff.light.intensity = lightIntensity;
+                // Smooth pulsing glow and abdomen color shift
+                updateFireflyGlow(ff, time);
+                
+                // Wing flutter animation
+                const isFlying = ff.state === 'FLYING' || ff.state === 'APPROACHING';
+                updateFireflyWings(ff, time, isFlying);
 
                 const pos = ff.obj.position;
                 const dist = pos.distanceTo(ff.target);

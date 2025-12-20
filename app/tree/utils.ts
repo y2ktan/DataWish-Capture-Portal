@@ -15,7 +15,19 @@ export const COLORS = {
     LEAF_BLUE: 0x2266cc,
     VINE: 0x00ffff,
     GLARE_COLOR: 0xaaffff,
-    FIREFLY_LIGHT: 0x00ffff
+    FIREFLY_LIGHT: 0xffdd88,
+    // Firefly warm colors
+    FIREFLY_BODY: 0x1a1408,
+    FIREFLY_HEAD: 0x0a0804,
+    FIREFLY_ABDOMEN_DIM: 0xff8833,
+    FIREFLY_ABDOMEN_BRIGHT: 0xffdd66,
+    FIREFLY_GLOW_INNER: 0xffcc66,
+    FIREFLY_GLOW_OUTER: 0x9966ff,
+    // Tendril colors
+    TENDRIL_PURPLE: 0xaa44ff,
+    TENDRIL_CYAN: 0x44ffff,
+    TENDRIL_PINK: 0xff66cc,
+    TENDRIL_WHITE: 0xeeffff
 };
 
 export const CONFIG = {
@@ -26,7 +38,8 @@ export const CONFIG = {
     ZOOMOUT_MAX_DISTANCE: 110,
     TRUNC_COUNT: 6,
     LEAVES_COUNT: 12000,
-    VINE_COUNT: 120
+    VINE_COUNT: 120,
+    TENDRIL_COUNT: 300
 };
 
 export function setupSceneLights(scene: THREE.Scene) {
@@ -451,7 +464,104 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
 
     treeGroup.add(new THREE.Points(leavesGeo, leavesMat));
 
-    // 4. Vines
+    // 4. BIOLUMINESCENT TENDRILS - 300 drooping strands that wave in breeze
+    const tendrilColors = [
+        new THREE.Color(COLORS.TENDRIL_PURPLE),
+        new THREE.Color(COLORS.TENDRIL_CYAN),
+        new THREE.Color(COLORS.TENDRIL_PINK),
+        new THREE.Color(COLORS.TENDRIL_WHITE)
+    ];
+
+    const tendrilGroup = new THREE.Group();
+    tendrilGroup.name = 'tendrils';
+
+    for (let i = 0; i < CONFIG.TENDRIL_COUNT; i++) {
+        const r = 8 + Math.random() * 40;
+        const theta = Math.random() * Math.PI * 2;
+        const startY = 38 + Math.cos((r / 45) * (Math.PI / 2)) * 18;
+        const tendrilLength = 12 + Math.random() * 30;
+        
+        // Create curved tendril with multiple segments for animation
+        const segments = 10;
+        const startX = Math.cos(theta) * r;
+        const startZ = Math.sin(theta) * r;
+        
+        // Store base positions for animation
+        const basePositions: THREE.Vector3[] = [];
+        for (let j = 0; j <= segments; j++) {
+            const t = j / segments;
+            basePositions.push(new THREE.Vector3(
+                startX,
+                startY - tendrilLength * t,
+                startZ
+            ));
+        }
+
+        // Create tendril geometry
+        const tendrilColor = tendrilColors[Math.floor(Math.random() * tendrilColors.length)];
+        const curve = new THREE.CatmullRomCurve3(basePositions);
+        const tendrilGeo = new THREE.TubeGeometry(curve, segments * 2, 0.04 + Math.random() * 0.04, 4, false);
+        
+        const tendrilMat = new THREE.MeshBasicMaterial({
+            color: tendrilColor,
+            transparent: true,
+            opacity: 0.5 + Math.random() * 0.3,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const tendril = new THREE.Mesh(tendrilGeo, tendrilMat);
+        tendril.frustumCulled = false;
+        
+        // Store animation data
+        tendril.userData = {
+            basePositions: basePositions,
+            phaseOffset: Math.random() * Math.PI * 2,
+            swayAmount: 0.5 + Math.random() * 1.5,
+            swaySpeed: 0.5 + Math.random() * 0.5,
+            segments: segments,
+            length: tendrilLength
+        };
+        
+        tendrilGroup.add(tendril);
+
+        // Add glowing particles along some tendrils
+        if (Math.random() > 0.6) {
+            const particleCount = Math.floor(tendrilLength / 4);
+            const particleGeo = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            const particleCol = new Float32Array(particleCount * 3);
+
+            for (let p = 0; p < particleCount; p++) {
+                const pt = curve.getPoint(p / particleCount);
+                particlePos[p * 3] = pt.x + (Math.random() - 0.5) * 0.3;
+                particlePos[p * 3 + 1] = pt.y + (Math.random() - 0.5) * 0.3;
+                particlePos[p * 3 + 2] = pt.z + (Math.random() - 0.5) * 0.3;
+                particleCol[p * 3] = tendrilColor.r;
+                particleCol[p * 3 + 1] = tendrilColor.g;
+                particleCol[p * 3 + 2] = tendrilColor.b;
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(particleCol, 3));
+
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.4,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const particles = new THREE.Points(particleGeo, particleMat);
+            particles.frustumCulled = false;
+            tendrilGroup.add(particles);
+        }
+    }
+
+    treeGroup.add(tendrilGroup);
+
+    // 5. Short vines
     const vineMat = new THREE.LineBasicMaterial({
         color: COLORS.VINE,
         transparent: true,
@@ -478,6 +588,43 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     return treeGroup;
 }
 
+// Animate tendrils waving like in a breeze
+export function updateTendrils(scene: THREE.Scene, time: number) {
+    scene.traverse((obj) => {
+        if (obj.name === 'tendrils') {
+            obj.children.forEach((child) => {
+                if (child instanceof THREE.Mesh && child.userData.basePositions) {
+                    const { basePositions, phaseOffset, swayAmount, swaySpeed, segments } = child.userData;
+                    
+                    // Create new positions with wave animation
+                    const newPositions: THREE.Vector3[] = [];
+                    for (let i = 0; i <= segments; i++) {
+                        const t = i / segments;
+                        const base = basePositions[i];
+                        
+                        // Wave increases toward the tip
+                        const waveInfluence = t * t; // Quadratic for natural droop
+                        const waveX = Math.sin(time * swaySpeed + phaseOffset + t * 2) * swayAmount * waveInfluence;
+                        const waveZ = Math.cos(time * swaySpeed * 0.7 + phaseOffset + t * 1.5) * swayAmount * 0.6 * waveInfluence;
+                        
+                        newPositions.push(new THREE.Vector3(
+                            base.x + waveX,
+                            base.y,
+                            base.z + waveZ
+                        ));
+                    }
+                    
+                    // Recreate the curve and update geometry
+                    const newCurve = new THREE.CatmullRomCurve3(newPositions);
+                    const newGeo = new THREE.TubeGeometry(newCurve, segments * 2, 0.04, 4, false);
+                    child.geometry.dispose();
+                    child.geometry = newGeo;
+                }
+            });
+        }
+    });
+}
+
 export function createGlareMaterial() {
     if (typeof document === 'undefined') return new THREE.SpriteMaterial(); // SSR Guard
 
@@ -487,9 +634,12 @@ export function createGlareMaterial() {
     const ctx = canvas.getContext('2d');
     if (ctx) {
         const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-        g.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        g.addColorStop(0.2, 'rgba(0, 255, 255, 0.8)');
-        g.addColorStop(0.5, 'rgba(0, 100, 255, 0.2)');
+        // Warm golden glow gradient
+        g.addColorStop(0, 'rgba(255, 255, 240, 1)');
+        g.addColorStop(0.15, 'rgba(255, 220, 130, 0.9)');
+        g.addColorStop(0.3, 'rgba(255, 180, 80, 0.6)');
+        g.addColorStop(0.5, 'rgba(200, 120, 50, 0.3)');
+        g.addColorStop(0.7, 'rgba(150, 80, 150, 0.15)');
         g.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, 64, 64);
@@ -497,7 +647,7 @@ export function createGlareMaterial() {
 
     return new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(canvas),
-        color: COLORS.GLARE_COLOR,
+        color: 0xffffff,
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false
@@ -509,13 +659,60 @@ export function createGlareMaterial() {
 export interface FireflyState {
     obj: THREE.Group;
     glare: THREE.Sprite;
+    outerGlare?: THREE.Sprite;
     light: THREE.PointLight;
-    // label: HTMLDivElement; // Removed from purely logic struct if we want a clean separation, but kept in Page state
+    wingL?: THREE.Mesh;
+    wingR?: THREE.Mesh;
+    abdomen?: THREE.Mesh;
+    abdomenMat?: THREE.MeshBasicMaterial;
     blinkOffset: number;
     state: 'FLYING' | 'APPROACHING' | 'PERCHED';
     target: THREE.Vector3;
     timer: number;
     speed: number;
+}
+
+// Smooth firefly glow update - call this in animation loop
+export function updateFireflyGlow(ff: FireflyState, time: number) {
+    // Smooth sinusoidal pulsing instead of abrupt blinking
+    const pulsePhase = time * 2 + ff.blinkOffset;
+    const pulse = (Math.sin(pulsePhase) * 0.5 + 0.5); // 0 to 1
+    const smoothPulse = pulse * pulse; // Ease in-out effect
+    
+    // Inner glow intensity
+    const innerScale = 4 + smoothPulse * 4;
+    ff.glare.scale.set(innerScale, innerScale, innerScale);
+    ff.glare.material.opacity = 0.6 + smoothPulse * 0.4;
+    
+    // Outer purple aura
+    if (ff.outerGlare) {
+        const outerScale = 8 + smoothPulse * 6;
+        ff.outerGlare.scale.set(outerScale, outerScale, outerScale);
+        ff.outerGlare.material.opacity = 0.2 + smoothPulse * 0.3;
+    }
+    
+    // Light intensity
+    ff.light.intensity = 0.3 + smoothPulse * 0.8;
+    
+    // Abdomen color shift: warm orange -> bright golden
+    if (ff.abdomenMat) {
+        const dimColor = new THREE.Color(COLORS.FIREFLY_ABDOMEN_DIM);
+        const brightColor = new THREE.Color(COLORS.FIREFLY_ABDOMEN_BRIGHT);
+        ff.abdomenMat.color.lerpColors(dimColor, brightColor, smoothPulse);
+    }
+}
+
+// Wing flutter animation - call in animation loop for flying fireflies
+export function updateFireflyWings(ff: FireflyState, time: number, isFlying: boolean) {
+    if (!ff.wingL || !ff.wingR) return;
+    
+    // Rapid flutter when flying, slow when perched
+    const flutterSpeed = isFlying ? 25 : 3;
+    const flutterAmount = isFlying ? 0.4 : 0.1;
+    const flutter = Math.sin(time * flutterSpeed + ff.blinkOffset * 10) * flutterAmount;
+    
+    ff.wingL.rotation.z = Math.PI / 5 + flutter;
+    ff.wingR.rotation.z = -Math.PI / 5 - flutter;
 }
 
 export function setRandomFlightTarget(ff: { target: THREE.Vector3, state: string }) {
@@ -556,66 +753,144 @@ export function setPerchTarget(ff: { target: THREE.Vector3, state: string, timer
     ff.state = 'APPROACHING';
 }
 
-// Shared Geometries to optimize memory
-const ffBodyGeo = new THREE.SphereGeometry(0.25, 6, 6); // Doubled size
-ffBodyGeo.scale(1, 2, 1); // Elongate to make a body shape
-const ffBodyMat = new THREE.MeshBasicMaterial({ color: 0xaaffff });
+// Enhanced Firefly Materials
+const ffHeadMat = new THREE.MeshBasicMaterial({ color: COLORS.FIREFLY_HEAD });
+const ffThoraxMat = new THREE.MeshBasicMaterial({ color: COLORS.FIREFLY_BODY });
+const ffAbdomenMat = new THREE.MeshBasicMaterial({ 
+    color: COLORS.FIREFLY_ABDOMEN_DIM,
+    transparent: true,
+    opacity: 0.95
+});
+const ffAntennaMat = new THREE.MeshBasicMaterial({ color: 0x2a1a0a });
 
-// Simple wing geometry
-const ffWingGeo = new THREE.CircleGeometry(0.5, 4); // Doubled size
+// Teardrop wing material
 const ffWingMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.4,
+    opacity: 0.35,
     side: THREE.DoubleSide,
     depthWrite: false
 });
 
+// Create teardrop wing shape
+function createTeardropWingGeo(): THREE.BufferGeometry {
+    const shape = new THREE.Shape();
+    // Teardrop curve - elegant wing shape
+    shape.moveTo(0, 0);
+    shape.bezierCurveTo(0.15, 0.3, 0.4, 0.5, 0.5, 0.8);
+    shape.bezierCurveTo(0.45, 1.0, 0.2, 1.1, 0, 1.0);
+    shape.bezierCurveTo(-0.2, 1.1, -0.45, 1.0, -0.5, 0.8);
+    shape.bezierCurveTo(-0.4, 0.5, -0.15, 0.3, 0, 0);
+    
+    const geo = new THREE.ShapeGeometry(shape);
+    geo.scale(0.6, 0.8, 1);
+    return geo;
+}
+
+const ffWingGeo = createTeardropWingGeo();
+
 export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     const group = new THREE.Group();
+    const bodyGroup = new THREE.Group();
 
-    // 1. Glow Aura 
-    const glare = new THREE.Sprite(glareMat.clone());
-    glare.scale.set(10, 10, 10); // Increased to match body size
-    glare.frustumCulled = false;
-    glare.renderOrder = 998;
-    group.add(glare);
+    // 1. DUAL GLOW SYSTEM
+    // Outer purple aura
+    const outerGlare = new THREE.Sprite(glareMat.clone());
+    outerGlare.material.color.setHex(COLORS.FIREFLY_GLOW_OUTER);
+    outerGlare.scale.set(12, 12, 12);
+    outerGlare.frustumCulled = false;
+    outerGlare.renderOrder = 997;
+    outerGlare.position.set(0, -0.2, 0);
+    group.add(outerGlare);
 
-    // 2. Light Source
-    const light = new THREE.PointLight(COLORS.FIREFLY_LIGHT, 0.6, 6);
+    // Inner warm golden glow
+    const innerGlare = new THREE.Sprite(glareMat.clone());
+    innerGlare.material.color.setHex(COLORS.FIREFLY_GLOW_INNER);
+    innerGlare.scale.set(6, 6, 6);
+    innerGlare.frustumCulled = false;
+    innerGlare.renderOrder = 998;
+    innerGlare.position.set(0, -0.2, 0);
+    group.add(innerGlare);
+
+    // 2. Warm Light Source
+    const light = new THREE.PointLight(COLORS.FIREFLY_LIGHT, 0.8, 8);
     light.frustumCulled = false;
-    light.renderOrder = 998;
+    light.position.set(0, -0.2, 0);
     group.add(light);
 
-    // 3. Physical Body
-    const body = new THREE.Mesh(ffBodyGeo, ffBodyMat);
-    // Orient body to align with Z/movement usually, but here we just rotate it flat
-    body.rotation.x = Math.PI / 2;
-    body.frustumCulled = false;
-    body.renderOrder = 998;
-    group.add(body);
+    // 3. HEAD - small dark sphere
+    const headGeo = new THREE.SphereGeometry(0.12, 8, 6);
+    const head = new THREE.Mesh(headGeo, ffHeadMat);
+    head.position.set(0, 0.45, 0);
+    head.frustumCulled = false;
+    bodyGroup.add(head);
 
-    // 4. Wings
-    const wingL = new THREE.Mesh(ffWingGeo, ffWingMat);
-    wingL.position.set(-0.35, 0.2, 0);
-    wingL.rotation.set(Math.PI / 2, 0, Math.PI / 6);
+    // 4. ANTENNAE - tiny curved lines
+    const antennaGeo = new THREE.CylinderGeometry(0.01, 0.015, 0.2, 4);
+    const antennaL = new THREE.Mesh(antennaGeo, ffAntennaMat);
+    antennaL.position.set(-0.06, 0.55, 0);
+    antennaL.rotation.z = Math.PI / 6;
+    antennaL.frustumCulled = false;
+    bodyGroup.add(antennaL);
+
+    const antennaR = new THREE.Mesh(antennaGeo, ffAntennaMat);
+    antennaR.position.set(0.06, 0.55, 0);
+    antennaR.rotation.z = -Math.PI / 6;
+    antennaR.frustumCulled = false;
+    bodyGroup.add(antennaR);
+
+    // 5. THORAX - dark elongated body segment
+    const thoraxGeo = new THREE.SphereGeometry(0.15, 8, 6);
+    thoraxGeo.scale(1, 1.3, 0.9);
+    const thorax = new THREE.Mesh(thoraxGeo, ffThoraxMat);
+    thorax.position.set(0, 0.25, 0);
+    thorax.frustumCulled = false;
+    bodyGroup.add(thorax);
+
+    // 6. ABDOMEN (Light Organ) - glowing teardrop
+    const abdomenGeo = new THREE.SphereGeometry(0.18, 10, 8);
+    abdomenGeo.scale(1, 1.6, 0.85);
+    const abdomenMatInstance = ffAbdomenMat.clone();
+    const abdomen = new THREE.Mesh(abdomenGeo, abdomenMatInstance);
+    abdomen.position.set(0, -0.1, 0);
+    abdomen.frustumCulled = false;
+    abdomen.renderOrder = 999;
+    bodyGroup.add(abdomen);
+
+    // 7. TEARDROP WINGS - elegant curved shape
+    const wingL = new THREE.Mesh(ffWingGeo, ffWingMat.clone());
+    wingL.position.set(-0.2, 0.25, 0);
+    wingL.rotation.set(0, 0, Math.PI / 5);
     wingL.frustumCulled = false;
     wingL.renderOrder = 998;
-    group.add(wingL);
+    bodyGroup.add(wingL);
 
-    const wingR = new THREE.Mesh(ffWingGeo, ffWingMat);
-    wingR.position.set(0.35, 0.2, 0);
-    wingR.rotation.set(Math.PI / 2, 0, -Math.PI / 6);
+    const wingR = new THREE.Mesh(ffWingGeo, ffWingMat.clone());
+    wingR.position.set(0.2, 0.25, 0);
+    wingR.rotation.set(0, 0, -Math.PI / 5);
     wingR.frustumCulled = false;
     wingR.renderOrder = 998;
-    group.add(wingR);
+    bodyGroup.add(wingR);
 
+    // Orient body group
+    bodyGroup.rotation.x = Math.PI / 2;
+    group.add(bodyGroup);
+
+    // Random starting position
     const r = 20 + Math.random() * 20;
     const ang = Math.random() * Math.PI * 2;
     group.position.set(Math.cos(ang) * r, 10 + Math.random() * 20, Math.sin(ang) * r);
     group.frustumCulled = false;
     group.renderOrder = 998;
 
-
-    return { group, glare, light, wingL, wingR };
+    return { 
+        group, 
+        glare: innerGlare, 
+        outerGlare,
+        light, 
+        wingL, 
+        wingR, 
+        abdomen,
+        abdomenMat: abdomenMatInstance
+    };
 }
