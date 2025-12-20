@@ -422,47 +422,100 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         treeGroup.add(createLimb(points, 0.7));
     }
 
-    // 3. Canopy
-    const leavesGeo = new THREE.BufferGeometry();
-    const posArray = new Float32Array(CONFIG.LEAVES_COUNT * 3);
-    const colorArray = new Float32Array(CONFIG.LEAVES_COUNT * 3);
+    // 3. Canopy - Leaf shapes with waving animation (using InstancedMesh for performance)
+    const leafShape = new THREE.Shape();
+    leafShape.moveTo(0, 0);
+    leafShape.bezierCurveTo(0.25, 0.4, 0.2, 0.8, 0, 1.2);
+    leafShape.bezierCurveTo(-0.2, 0.8, -0.25, 0.4, 0, 0);
+    const leafGeo = new THREE.ShapeGeometry(leafShape);
+    leafGeo.scale(1.2, 1.5, 1);
 
-    const c1 = new THREE.Color(COLORS.LEAF_CYAN);
-    const c2 = new THREE.Color(COLORS.LEAF_PURPLE);
-    const c3 = new THREE.Color(COLORS.LEAF_BLUE);
+    const leafColors = [
+        new THREE.Color(COLORS.LEAF_CYAN),
+        new THREE.Color(COLORS.LEAF_PURPLE),
+        new THREE.Color(COLORS.LEAF_BLUE)
+    ];
 
-    for (let i = 0; i < CONFIG.LEAVES_COUNT; i++) {
+    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 2000);
+    const canopyGroup = new THREE.Group();
+    canopyGroup.name = 'canopyLeaves';
+
+    // Pre-allocate typed arrays for animation data
+    const leafPositions = new Float32Array(leafCount * 3);
+    const leafBaseRotY = new Float32Array(leafCount);
+    const leafPhase = new Float32Array(leafCount);
+
+    // Create 3 instanced meshes (one per color) for efficiency
+    const instanceCounts = [0, 0, 0];
+    const tempIndices: number[][] = [[], [], []];
+
+    for (let i = 0; i < leafCount; i++) {
         const r = Math.pow(Math.random(), 0.4) * 50;
         const theta = Math.random() * Math.PI * 2;
-        let x = Math.cos(theta) * r;
-        let z = Math.sin(theta) * r;
-        let y = 40 + Math.cos((r / 50) * (Math.PI / 2)) * 32 - (Math.random() * 10);
+        const x = Math.cos(theta) * r;
+        const z = Math.sin(theta) * r;
+        const y = 40 + Math.cos((r / 50) * (Math.PI / 2)) * 32 - (Math.random() * 10);
 
-        posArray[i * 3] = x;
-        posArray[i * 3 + 1] = y;
-        posArray[i * 3 + 2] = z;
+        leafPositions[i * 3] = x;
+        leafPositions[i * 3 + 1] = y;
+        leafPositions[i * 3 + 2] = z;
+        leafBaseRotY[i] = Math.random() * Math.PI * 2;
+        leafPhase[i] = Math.random() * Math.PI * 2;
 
-        const c = Math.random() < 0.6 ? c1 : (Math.random() < 0.8 ? c3 : c2);
-        colorArray[i * 3] = c.r;
-        colorArray[i * 3 + 1] = c.g;
-        colorArray[i * 3 + 2] = c.b;
+        const colorIdx = Math.random() < 0.6 ? 0 : (Math.random() < 0.8 ? 2 : 1);
+        tempIndices[colorIdx].push(i);
+        instanceCounts[colorIdx]++;
 
         if (i % 40 === 0) perchPoints.push(new THREE.Vector3(x, y, z));
     }
 
-    leavesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    leavesGeo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+    // Create instanced meshes for each color
+    const instancedMeshes: THREE.InstancedMesh[] = [];
+    const dummy = new THREE.Object3D();
 
-    const leavesMat = new THREE.PointsMaterial({
-        size: 0.8,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.9,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-    });
+    for (let c = 0; c < 3; c++) {
+        if (instanceCounts[c] === 0) continue;
 
-    treeGroup.add(new THREE.Points(leavesGeo, leavesMat));
+        const mat = new THREE.MeshBasicMaterial({
+            color: leafColors[c],
+            transparent: true,
+            opacity: 0.85,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const mesh = new THREE.InstancedMesh(leafGeo, mat, instanceCounts[c]);
+        mesh.frustumCulled = false;
+
+        // Set initial transforms
+        tempIndices[c].forEach((leafIdx, instanceIdx) => {
+            const x = leafPositions[leafIdx * 3];
+            const y = leafPositions[leafIdx * 3 + 1];
+            const z = leafPositions[leafIdx * 3 + 2];
+
+            dummy.position.set(x, y, z);
+            dummy.rotation.set(0, leafBaseRotY[leafIdx], 0);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(instanceIdx, dummy.matrix);
+        });
+
+        mesh.instanceMatrix.needsUpdate = true;
+        instancedMeshes.push(mesh);
+        canopyGroup.add(mesh);
+    }
+
+    // Store animation data
+    canopyGroup.userData = {
+        leafPositions,
+        leafBaseRotY,
+        leafPhase,
+        leafCount,
+        tempIndices,
+        instancedMeshes
+    };
+
+    treeGroup.add(canopyGroup);
 
     // 4. BIOLUMINESCENT TENDRILS - 300 drooping strands that wave in breeze
     const tendrilColors = [
@@ -586,6 +639,43 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     scene.add(treeGroup);
 
     return treeGroup;
+}
+
+// Animate canopy leaves waving - uses InstancedMesh for smooth performance
+export function updateCanopyLeaves(scene: THREE.Scene, time: number) {
+    const dummy = new THREE.Object3D();
+    
+    scene.traverse((obj) => {
+        if (obj.name === 'canopyLeaves' && obj.userData.instancedMeshes) {
+            const { leafPositions, leafBaseRotY, leafPhase, tempIndices, instancedMeshes } = obj.userData;
+            
+            const t1 = time * 1.2;
+            const t2 = time * 0.9;
+            
+            instancedMeshes.forEach((mesh: THREE.InstancedMesh, colorIdx: number) => {
+                const indices = tempIndices[colorIdx];
+                
+                indices.forEach((leafIdx: number, instanceIdx: number) => {
+                    const phase = leafPhase[leafIdx];
+                    
+                    // Smooth wave rotation
+                    const waveX = Math.sin(t1 + phase) * 0.15;
+                    const waveZ = Math.cos(t2 + phase * 1.3) * 0.12;
+                    
+                    dummy.position.set(
+                        leafPositions[leafIdx * 3],
+                        leafPositions[leafIdx * 3 + 1],
+                        leafPositions[leafIdx * 3 + 2]
+                    );
+                    dummy.rotation.set(waveX, leafBaseRotY[leafIdx], waveZ);
+                    dummy.updateMatrix();
+                    mesh.setMatrixAt(instanceIdx, dummy.matrix);
+                });
+                
+                mesh.instanceMatrix.needsUpdate = true;
+            });
+        }
+    });
 }
 
 // Animate tendrils waving like in a breeze

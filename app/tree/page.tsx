@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateFireflyGlow, updateFireflyWings } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -161,7 +161,8 @@ function TreePageInner() {
                 boat.rotation.y = boatBaseRotY + time * -0.03;
             }
 
-            // Animate tendrils waving in breeze
+            // Animate canopy leaves and tendrils waving in breeze
+            updateCanopyLeaves(scene, time);
             updateTendrils(scene, time);
 
             fireflies.forEach(ff => {
