@@ -505,6 +505,56 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         canopyGroup.add(mesh);
     }
 
+    // Add green petioles (stems) connecting leaves to branches
+    const petioleMat = new THREE.MeshBasicMaterial({
+        color: 0x2d5a27,
+        transparent: true,
+        opacity: 0.9
+    });
+    const petioleGeo = new THREE.CylinderGeometry(0.03, 0.04, 1, 4);
+    petioleGeo.translate(0, -0.5, 0); // Origin at top
+
+    const petioleGroup = new THREE.Group();
+    petioleGroup.name = 'petioles';
+
+    // Store petiole data for animation
+    const petioleMeshes: THREE.Mesh[] = [];
+    const petioleBaseRotX = new Float32Array(leafCount);
+    const petioleBaseRotZ = new Float32Array(leafCount);
+
+    for (let i = 0; i < leafCount; i++) {
+        const x = leafPositions[i * 3];
+        const y = leafPositions[i * 3 + 1];
+        const z = leafPositions[i * 3 + 2];
+
+        const petiole = new THREE.Mesh(petioleGeo, petioleMat);
+        petiole.position.set(x, y, z);
+        
+        // Angle stem toward trunk center
+        const angle = Math.atan2(z, x);
+        const tiltX = 0.3 + Math.random() * 0.2;
+        const tiltZ = 0.3 + Math.random() * 0.2;
+        
+        petioleBaseRotX[i] = tiltX;
+        petioleBaseRotZ[i] = tiltZ;
+        
+        petiole.rotation.set(tiltX, angle + Math.PI, tiltZ);
+        petiole.frustumCulled = false;
+        
+        petioleMeshes.push(petiole);
+        petioleGroup.add(petiole);
+    }
+
+    petioleGroup.userData = {
+        petioleMeshes,
+        petioleBaseRotX,
+        petioleBaseRotZ,
+        leafPhase,
+        leafCount
+    };
+
+    canopyGroup.add(petioleGroup);
+
     // Store animation data
     canopyGroup.userData = {
         leafPositions,
@@ -512,12 +562,53 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         leafPhase,
         leafCount,
         tempIndices,
-        instancedMeshes
+        instancedMeshes,
+        petioleGroup
     };
 
     treeGroup.add(canopyGroup);
 
-    // 4. BIOLUMINESCENT TENDRILS - 300 drooping strands that wave in breeze
+    // Add branches from trunk to leaf clusters (using same material as trunk)
+    const branchGroup = new THREE.Group();
+    branchGroup.name = 'branches';
+
+    for (let i = 0; i < leafCount; i += 25) {
+        const leafX = leafPositions[i * 3];
+        const leafY = leafPositions[i * 3 + 1];
+        const leafZ = leafPositions[i * 3 + 2];
+
+        // Calculate trunk attachment point
+        const trunkRadius = 4;
+        const dist = Math.sqrt(leafX * leafX + leafZ * leafZ);
+        const angle = Math.atan2(leafZ, leafX);
+        
+        // Branch starts from trunk at a lower height
+        const trunkX = Math.cos(angle) * trunkRadius;
+        const trunkZ = Math.sin(angle) * trunkRadius;
+        const trunkY = Math.min(leafY - 8, 30 + (dist / 50) * 10);
+
+        // Create curved branch with 3 points
+        const midX = (trunkX + leafX) * 0.5;
+        const midZ = (trunkZ + leafZ) * 0.5;
+        const midY = (trunkY + leafY) * 0.5 + 3;
+
+        const branchPoints = [
+            new THREE.Vector3(trunkX, trunkY, trunkZ),
+            new THREE.Vector3(midX, midY, midZ),
+            new THREE.Vector3(leafX, leafY - 0.5, leafZ)
+        ];
+
+        const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
+        // Use TubeGeometry with trunk material to match trunk
+        const branchGeo = new THREE.TubeGeometry(branchCurve, 8, 0.15 + Math.random() * 0.1, 6, false);
+        const branch = new THREE.Mesh(branchGeo, trunkMaterial);
+        branch.frustumCulled = false;
+        branchGroup.add(branch);
+    }
+
+    treeGroup.add(branchGroup);
+
+    // 4. BIOLUMINESCENT TENDRILS - hanging from branches
     const tendrilColors = [
         new THREE.Color(COLORS.TENDRIL_PURPLE),
         new THREE.Color(COLORS.TENDRIL_CYAN),
@@ -528,89 +619,103 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     const tendrilGroup = new THREE.Group();
     tendrilGroup.name = 'tendrils';
 
-    for (let i = 0; i < CONFIG.TENDRIL_COUNT; i++) {
-        const r = 8 + Math.random() * 40;
-        const theta = Math.random() * Math.PI * 2;
-        const startY = 38 + Math.cos((r / 45) * (Math.PI / 2)) * 18;
-        const tendrilLength = 12 + Math.random() * 30;
-        
-        // Create curved tendril with multiple segments for animation
-        const segments = 10;
-        const startX = Math.cos(theta) * r;
-        const startZ = Math.sin(theta) * r;
-        
-        // Store base positions for animation
-        const basePositions: THREE.Vector3[] = [];
-        for (let j = 0; j <= segments; j++) {
-            const t = j / segments;
-            basePositions.push(new THREE.Vector3(
-                startX,
-                startY - tendrilLength * t,
-                startZ
-            ));
-        }
+    // Collect branch endpoints for tendril attachment
+    const branchEndpoints: THREE.Vector3[] = [];
+    for (let i = 0; i < leafCount; i += 25) {
+        const x = leafPositions[i * 3];
+        const y = leafPositions[i * 3 + 1];
+        const z = leafPositions[i * 3 + 2];
+        branchEndpoints.push(new THREE.Vector3(x, y, z));
+    }
 
-        // Create tendril geometry
-        const tendrilColor = tendrilColors[Math.floor(Math.random() * tendrilColors.length)];
-        const curve = new THREE.CatmullRomCurve3(basePositions);
-        const tendrilGeo = new THREE.TubeGeometry(curve, segments * 2, 0.04 + Math.random() * 0.04, 4, false);
-        
-        const tendrilMat = new THREE.MeshBasicMaterial({
-            color: tendrilColor,
-            transparent: true,
-            opacity: 0.5 + Math.random() * 0.3,
-            blending: THREE.AdditiveBlending
-        });
-        
-        const tendril = new THREE.Mesh(tendrilGeo, tendrilMat);
-        tendril.frustumCulled = false;
-        
-        // Store animation data
-        tendril.userData = {
-            basePositions: basePositions,
-            phaseOffset: Math.random() * Math.PI * 2,
-            swayAmount: 0.5 + Math.random() * 1.5,
-            swaySpeed: 0.5 + Math.random() * 0.5,
-            segments: segments,
-            length: tendrilLength
-        };
-        
-        tendrilGroup.add(tendril);
-
-        // Add glowing particles along some tendrils
-        if (Math.random() > 0.6) {
-            const particleCount = Math.floor(tendrilLength / 4);
-            const particleGeo = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-            const particleCol = new Float32Array(particleCount * 3);
-
-            for (let p = 0; p < particleCount; p++) {
-                const pt = curve.getPoint(p / particleCount);
-                particlePos[p * 3] = pt.x + (Math.random() - 0.5) * 0.3;
-                particlePos[p * 3 + 1] = pt.y + (Math.random() - 0.5) * 0.3;
-                particlePos[p * 3 + 2] = pt.z + (Math.random() - 0.5) * 0.3;
-                particleCol[p * 3] = tendrilColor.r;
-                particleCol[p * 3 + 1] = tendrilColor.g;
-                particleCol[p * 3 + 2] = tendrilColor.b;
+    // Create tendrils hanging from branch endpoints and along branches
+    const tendrilsPerBranch = Math.ceil(CONFIG.TENDRIL_COUNT / branchEndpoints.length);
+    
+    branchEndpoints.forEach((branchEnd, branchIdx) => {
+        for (let t = 0; t < tendrilsPerBranch; t++) {
+            // Vary position slightly along and around branch
+            const offsetAngle = Math.random() * Math.PI * 2;
+            const offsetRadius = Math.random() * 3;
+            const startX = branchEnd.x + Math.cos(offsetAngle) * offsetRadius;
+            const startZ = branchEnd.z + Math.sin(offsetAngle) * offsetRadius;
+            const startY = branchEnd.y - Math.random() * 5;
+            
+            const tendrilLength = 8 + Math.random() * 20;
+            const segments = 10;
+            
+            // Store base positions for animation
+            const basePositions: THREE.Vector3[] = [];
+            for (let j = 0; j <= segments; j++) {
+                const s = j / segments;
+                basePositions.push(new THREE.Vector3(
+                    startX,
+                    startY - tendrilLength * s,
+                    startZ
+                ));
             }
 
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-            particleGeo.setAttribute('color', new THREE.BufferAttribute(particleCol, 3));
-
-            const particleMat = new THREE.PointsMaterial({
-                size: 0.4,
-                vertexColors: true,
+            // Create tendril geometry
+            const tendrilColor = tendrilColors[Math.floor(Math.random() * tendrilColors.length)];
+            const curve = new THREE.CatmullRomCurve3(basePositions);
+            const tendrilGeo = new THREE.TubeGeometry(curve, segments * 2, 0.04 + Math.random() * 0.04, 4, false);
+            
+            const tendrilMat = new THREE.MeshBasicMaterial({
+                color: tendrilColor,
                 transparent: true,
-                opacity: 0.7,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
+                opacity: 0.5 + Math.random() * 0.3,
+                blending: THREE.AdditiveBlending
             });
+            
+            const tendril = new THREE.Mesh(tendrilGeo, tendrilMat);
+            tendril.frustumCulled = false;
+            
+            // Store animation data
+            tendril.userData = {
+                basePositions: basePositions,
+                phaseOffset: Math.random() * Math.PI * 2,
+                swayAmount: 0.5 + Math.random() * 1.5,
+                swaySpeed: 0.5 + Math.random() * 0.5,
+                segments: segments,
+                length: tendrilLength
+            };
+            
+            tendrilGroup.add(tendril);
 
-            const particles = new THREE.Points(particleGeo, particleMat);
-            particles.frustumCulled = false;
-            tendrilGroup.add(particles);
+            // Add glowing particles along some tendrils
+            if (Math.random() > 0.6) {
+                const particleCount = Math.floor(tendrilLength / 4);
+                const particleGeo = new THREE.BufferGeometry();
+                const particlePos = new Float32Array(particleCount * 3);
+                const particleCol = new Float32Array(particleCount * 3);
+
+                for (let p = 0; p < particleCount; p++) {
+                    const pt = curve.getPoint(p / particleCount);
+                    particlePos[p * 3] = pt.x + (Math.random() - 0.5) * 0.3;
+                    particlePos[p * 3 + 1] = pt.y + (Math.random() - 0.5) * 0.3;
+                    particlePos[p * 3 + 2] = pt.z + (Math.random() - 0.5) * 0.3;
+                    particleCol[p * 3] = tendrilColor.r;
+                    particleCol[p * 3 + 1] = tendrilColor.g;
+                    particleCol[p * 3 + 2] = tendrilColor.b;
+                }
+
+                particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+                particleGeo.setAttribute('color', new THREE.BufferAttribute(particleCol, 3));
+
+                const particleMat = new THREE.PointsMaterial({
+                    size: 0.4,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.7,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                const particles = new THREE.Points(particleGeo, particleMat);
+                particles.frustumCulled = false;
+                tendrilGroup.add(particles);
+            }
         }
-    }
+    });
 
     treeGroup.add(tendrilGroup);
 
@@ -647,7 +752,7 @@ export function updateCanopyLeaves(scene: THREE.Scene, time: number) {
     
     scene.traverse((obj) => {
         if (obj.name === 'canopyLeaves' && obj.userData.instancedMeshes) {
-            const { leafPositions, leafBaseRotY, leafPhase, tempIndices, instancedMeshes } = obj.userData;
+            const { leafPositions, leafBaseRotY, leafPhase, tempIndices, instancedMeshes, petioleGroup } = obj.userData;
             
             const t1 = time * 1.2;
             const t2 = time * 0.9;
@@ -674,6 +779,20 @@ export function updateCanopyLeaves(scene: THREE.Scene, time: number) {
                 
                 mesh.instanceMatrix.needsUpdate = true;
             });
+
+            // Animate petioles to match leaf movement
+            if (petioleGroup && petioleGroup.userData) {
+                const { petioleMeshes, petioleBaseRotX, petioleBaseRotZ, leafCount: pCount } = petioleGroup.userData;
+                
+                for (let i = 0; i < pCount; i++) {
+                    const phase = leafPhase[i];
+                    const waveX = Math.sin(t1 + phase) * 0.08;
+                    const waveZ = Math.cos(t2 + phase * 1.3) * 0.06;
+                    
+                    petioleMeshes[i].rotation.x = petioleBaseRotX[i] + waveX;
+                    petioleMeshes[i].rotation.z = petioleBaseRotZ[i] + waveZ;
+                }
+            }
         }
     });
 }
