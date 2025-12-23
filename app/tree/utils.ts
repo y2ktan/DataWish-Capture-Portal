@@ -8,11 +8,14 @@ export const COLORS = {
     HEART_LIGHT: 0x00ffff,
     TRUNK_SPOTLIGHT: 0xe0f7ff,
     WATER: 0x000c50,
-    TRUNK: 0x66ccff,
-    TRUNK_EMISSIVE: 0x0066aa,
-    LEAF_CYAN: 0x22eebb,
-    LEAF_PURPLE: 0xaa44dd,
-    LEAF_BLUE: 0x2266cc,
+    // Dark bark trunk with golden glow veins
+    TRUNK: 0x2a1f1a,
+    TRUNK_EMISSIVE: 0x1a0f0a,
+    TRUNK_VEIN_GLOW: 0xffcc44,
+    // Green tropical leaves - brighter
+    LEAF_GREEN_DARK: 0x2d7a3d,
+    LEAF_GREEN_MID: 0x4aad5a,
+    LEAF_GREEN_LIGHT: 0x6dce7d,
     VINE: 0x00ffff,
     GLARE_COLOR: 0xaaffff,
     FIREFLY_LIGHT: 0xffdd88,
@@ -23,11 +26,11 @@ export const COLORS = {
     FIREFLY_ABDOMEN_BRIGHT: 0xffdd66,
     FIREFLY_GLOW_INNER: 0xffcc66,
     FIREFLY_GLOW_OUTER: 0x9966ff,
-    // Tendril colors
-    TENDRIL_PURPLE: 0xaa44ff,
-    TENDRIL_CYAN: 0x44ffff,
-    TENDRIL_PINK: 0xff66cc,
-    TENDRIL_WHITE: 0xeeffff
+    // Tendril colors - silvery white glow
+    TENDRIL_WHITE: 0xeeffff,
+    TENDRIL_SILVER: 0xaaddff,
+    TENDRIL_CYAN: 0x66ddff,
+    TENDRIL_PURPLE: 0xaa88ff
 };
 
 export const CONFIG = {
@@ -365,14 +368,24 @@ function createTexturedTrunkMaterial() {
     return new THREE.MeshStandardMaterial({
         map: woodColorMap,
         normalMap: woodNormalMap,
-        normalScale: new THREE.Vector2(0.8, 0.8),
+        normalScale: new THREE.Vector2(1.0, 1.0),
         roughnessMap: woodRoughnessMap,
         color: COLORS.TRUNK,
         emissive: COLORS.TRUNK_EMISSIVE,
-        emissiveIntensity: 1.1,
-        roughness: 0.6,
+        emissiveIntensity: 0.3,
+        roughness: 0.85,
         metalness: 0,
         flatShading: false,
+    });
+}
+
+// Create glowing vein material for trunk
+function createGlowVeinMaterial() {
+    return new THREE.MeshBasicMaterial({
+        color: COLORS.TRUNK_VEIN_GLOW,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending
     });
 }
 
@@ -422,27 +435,63 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         treeGroup.add(createLimb(points, 0.7));
     }
 
-    // 3. Canopy - Leaf shapes with waving animation (using InstancedMesh for performance)
+    // 2.5. Glowing veins on trunk (golden bioluminescent lines)
+    const veinMaterial = createGlowVeinMaterial();
+    const veinGroup = new THREE.Group();
+    veinGroup.name = 'trunkVeins';
+
+    for (let v = 0; v < 12; v++) {
+        const veinPoints: THREE.Vector3[] = [];
+        const startAngle = (v / 12) * Math.PI * 2 + Math.random() * 0.3;
+        const spiralRate = 0.08 + Math.random() * 0.05;
+        
+        // Create winding vein path up the trunk
+        for (let h = -3; h <= 32; h += 2) {
+            const ang = startAngle + h * spiralRate;
+            const baseR = 4 - (h / 35) * 2;
+            const wobble = Math.sin(h * 0.5) * 0.5;
+            veinPoints.push(new THREE.Vector3(
+                Math.cos(ang) * (baseR + wobble),
+                h,
+                Math.sin(ang) * (baseR + wobble)
+            ));
+        }
+
+        const veinCurve = new THREE.CatmullRomCurve3(veinPoints);
+        const veinGeo = new THREE.TubeGeometry(veinCurve, 30, 0.08 + Math.random() * 0.04, 4, false);
+        const vein = new THREE.Mesh(veinGeo, veinMaterial);
+        vein.frustumCulled = false;
+        veinGroup.add(vein);
+    }
+
+    treeGroup.add(veinGroup);
+
+    // 3. Canopy - Large tropical leaves like monstera (using InstancedMesh for performance)
+    // Create larger, more tropical leaf shape
     const leafShape = new THREE.Shape();
     leafShape.moveTo(0, 0);
-    leafShape.bezierCurveTo(0.25, 0.4, 0.2, 0.8, 0, 1.2);
-    leafShape.bezierCurveTo(-0.2, 0.8, -0.25, 0.4, 0, 0);
+    leafShape.bezierCurveTo(0.8, 0.3, 1.2, 1.0, 0.6, 2.0);
+    leafShape.bezierCurveTo(0.3, 2.5, 0, 2.8, 0, 2.8);
+    leafShape.bezierCurveTo(0, 2.8, -0.3, 2.5, -0.6, 2.0);
+    leafShape.bezierCurveTo(-1.2, 1.0, -0.8, 0.3, 0, 0);
     const leafGeo = new THREE.ShapeGeometry(leafShape);
-    leafGeo.scale(1.2, 1.5, 1);
+    leafGeo.scale(2.0, 2.0, 1);
 
+    // Green color palette for tropical leaves
     const leafColors = [
-        new THREE.Color(COLORS.LEAF_CYAN),
-        new THREE.Color(COLORS.LEAF_PURPLE),
-        new THREE.Color(COLORS.LEAF_BLUE)
+        new THREE.Color(COLORS.LEAF_GREEN_DARK),
+        new THREE.Color(COLORS.LEAF_GREEN_MID),
+        new THREE.Color(COLORS.LEAF_GREEN_LIGHT)
     ];
 
-    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 3000);
+    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 2000);
     const canopyGroup = new THREE.Group();
     canopyGroup.name = 'canopyLeaves';
 
     // Pre-allocate typed arrays for animation data
     const leafPositions = new Float32Array(leafCount * 3);
     const leafBaseRotY = new Float32Array(leafCount);
+    const leafBaseRotX = new Float32Array(leafCount);
     const leafPhase = new Float32Array(leafCount);
 
     // Create 3 instanced meshes (one per color) for efficiency
@@ -450,19 +499,24 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     const tempIndices: number[][] = [[], [], []];
 
     for (let i = 0; i < leafCount; i++) {
-        const r = Math.pow(Math.random(), 0.4) * 50;
+        // Distribute leaves in a dome canopy shape
+        const r = Math.pow(Math.random(), 0.5) * 45;
         const theta = Math.random() * Math.PI * 2;
         const x = Math.cos(theta) * r;
         const z = Math.sin(theta) * r;
-        const y = 40 + Math.cos((r / 50) * (Math.PI / 2)) * 32 - (Math.random() * 10);
+        // Dome shape - higher in center, lower at edges
+        const y = 35 + Math.cos((r / 45) * (Math.PI / 2)) * 28 - (Math.random() * 8);
 
         leafPositions[i * 3] = x;
         leafPositions[i * 3 + 1] = y;
         leafPositions[i * 3 + 2] = z;
         leafBaseRotY[i] = Math.random() * Math.PI * 2;
+        // Tilt leaves outward from center
+        leafBaseRotX[i] = (r / 45) * 0.8 + Math.random() * 0.3;
         leafPhase[i] = Math.random() * Math.PI * 2;
 
-        const colorIdx = Math.random() < 0.6 ? 0 : (Math.random() < 0.8 ? 2 : 1);
+        // More dark green leaves, fewer light
+        const colorIdx = Math.random() < 0.5 ? 0 : (Math.random() < 0.6 ? 1 : 2);
         tempIndices[colorIdx].push(i);
         instanceCounts[colorIdx]++;
 
@@ -476,13 +530,15 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     for (let c = 0; c < 3; c++) {
         if (instanceCounts[c] === 0) continue;
 
-        const mat = new THREE.MeshBasicMaterial({
+        const mat = new THREE.MeshStandardMaterial({
             color: leafColors[c],
+            emissive: leafColors[c],
+            emissiveIntensity: 0.3,
             transparent: true,
-            opacity: 0.85,
+            opacity: 0.95,
             side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+            roughness: 0.4,
+            metalness: 0.1
         });
 
         const mesh = new THREE.InstancedMesh(leafGeo, mat, instanceCounts[c]);
@@ -495,7 +551,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
             const z = leafPositions[leafIdx * 3 + 2];
 
             dummy.position.set(x, y, z);
-            dummy.rotation.set(0, leafBaseRotY[leafIdx], 0);
+            dummy.rotation.set(leafBaseRotX[leafIdx], leafBaseRotY[leafIdx], 0);
             dummy.updateMatrix();
             mesh.setMatrixAt(instanceIdx, dummy.matrix);
         });
@@ -559,6 +615,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     canopyGroup.userData = {
         leafPositions,
         leafBaseRotY,
+        leafBaseRotX,
         leafPhase,
         leafCount,
         tempIndices,
@@ -599,8 +656,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         ];
 
         const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
-        // Use TubeGeometry with trunk material to match trunk
-        const branchGeo = new THREE.TubeGeometry(branchCurve, 8, 0.15 + Math.random() * 0.1, 6, false);
+        // Use TubeGeometry with trunk material - thicker branches like reference
+        const branchGeo = new THREE.TubeGeometry(branchCurve, 12, 0.4 + Math.random() * 0.3, 8, false);
         const branch = new THREE.Mesh(branchGeo, trunkMaterial);
         branch.frustumCulled = false;
         branchGroup.add(branch);
@@ -608,12 +665,12 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
 
     treeGroup.add(branchGroup);
 
-    // 4. BIOLUMINESCENT TENDRILS - hanging from branches
+    // 4. BIOLUMINESCENT TENDRILS - hanging from branches (silvery white glow)
     const tendrilColors = [
-        new THREE.Color(COLORS.TENDRIL_PURPLE),
+        new THREE.Color(COLORS.TENDRIL_WHITE),
+        new THREE.Color(COLORS.TENDRIL_SILVER),
         new THREE.Color(COLORS.TENDRIL_CYAN),
-        new THREE.Color(COLORS.TENDRIL_PINK),
-        new THREE.Color(COLORS.TENDRIL_WHITE)
+        new THREE.Color(COLORS.TENDRIL_PURPLE)
     ];
 
     const tendrilGroup = new THREE.Group();
@@ -654,15 +711,15 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
                 ));
             }
 
-            // Create tendril geometry
+            // Create tendril geometry - thin silvery strands
             const tendrilColor = tendrilColors[Math.floor(Math.random() * tendrilColors.length)];
             const curve = new THREE.CatmullRomCurve3(basePositions);
-            const tendrilGeo = new THREE.TubeGeometry(curve, segments * 2, 0.04 + Math.random() * 0.04, 4, false);
+            const tendrilGeo = new THREE.TubeGeometry(curve, segments * 2, 0.02 + Math.random() * 0.02, 4, false);
             
             const tendrilMat = new THREE.MeshBasicMaterial({
                 color: tendrilColor,
                 transparent: true,
-                opacity: 0.5 + Math.random() * 0.3,
+                opacity: 0.6 + Math.random() * 0.3,
                 blending: THREE.AdditiveBlending
             });
             
@@ -752,27 +809,28 @@ export function updateCanopyLeaves(scene: THREE.Scene, time: number) {
     
     scene.traverse((obj) => {
         if (obj.name === 'canopyLeaves' && obj.userData.instancedMeshes) {
-            const { leafPositions, leafBaseRotY, leafPhase, tempIndices, instancedMeshes, petioleGroup } = obj.userData;
+            const { leafPositions, leafBaseRotY, leafBaseRotX, leafPhase, tempIndices, instancedMeshes, petioleGroup } = obj.userData;
             
-            const t1 = time * 1.2;
-            const t2 = time * 0.9;
+            const t1 = time * 0.8;
+            const t2 = time * 0.6;
             
             instancedMeshes.forEach((mesh: THREE.InstancedMesh, colorIdx: number) => {
                 const indices = tempIndices[colorIdx];
                 
                 indices.forEach((leafIdx: number, instanceIdx: number) => {
                     const phase = leafPhase[leafIdx];
+                    const baseRotX = leafBaseRotX ? leafBaseRotX[leafIdx] : 0;
                     
-                    // Smooth wave rotation
-                    const waveX = Math.sin(t1 + phase) * 0.15;
-                    const waveZ = Math.cos(t2 + phase * 1.3) * 0.12;
+                    // Gentle wave rotation for tropical leaves
+                    const waveX = Math.sin(t1 + phase) * 0.1;
+                    const waveZ = Math.cos(t2 + phase * 1.3) * 0.08;
                     
                     dummy.position.set(
                         leafPositions[leafIdx * 3],
                         leafPositions[leafIdx * 3 + 1],
                         leafPositions[leafIdx * 3 + 2]
                     );
-                    dummy.rotation.set(waveX, leafBaseRotY[leafIdx], waveZ);
+                    dummy.rotation.set(baseRotX + waveX, leafBaseRotY[leafIdx], waveZ);
                     dummy.updateMatrix();
                     mesh.setMatrixAt(instanceIdx, dummy.matrix);
                 });
