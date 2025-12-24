@@ -46,6 +46,8 @@ export default function RegisterPage() {
   const lastPanXRef = useRef(0);
   const lastTouchDistRef = useRef(0);
   const [, forceUpdate] = useState(0); // For triggering re-render when needed
+  const supportsNativeZoomRef = useRef(false);
+  const nativeZoomRangeRef = useRef({ min: 1, max: 1 });
 
   // Orientation state
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
@@ -110,6 +112,22 @@ export default function RegisterPage() {
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
+        
+        // Check for native zoom support and get zoom range
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        if (videoTrack) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const capabilities = videoTrack.getCapabilities?.() as any;
+          if (capabilities?.zoom) {
+            supportsNativeZoomRef.current = true;
+            nativeZoomRangeRef.current = {
+              min: capabilities.zoom.min || 1,
+              max: capabilities.zoom.max || 1
+            };
+          } else {
+            supportsNativeZoomRef.current = false;
+          }
+        }
       } catch (err) {
         const error = err as Error;
         if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
@@ -145,12 +163,44 @@ export default function RegisterPage() {
     [stream, requestCameraPermission]
   );
 
-  // Apply transform to video element
-  const applyTransform = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.style.transform = `scale(${zoomRef.current}) translateX(${panXRef.current}px)`;
+  // Apply native camera zoom with autofocus trigger
+  const applyNativeZoom = useCallback(async (zoomLevel: number) => {
+    if (!stream || !supportsNativeZoomRef.current) return false;
+    
+    const videoTrack = stream.getVideoTracks()[0];
+    if (!videoTrack) return false;
+    
+    try {
+      // Map our zoom range to native zoom range
+      const { min, max } = nativeZoomRangeRef.current;
+      const nativeZoom = min + (zoomLevel - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM) * (max - min);
+      const clampedZoom = Math.min(Math.max(nativeZoom, min), max);
+      
+      // Apply zoom constraint - this triggers autofocus on most devices
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await videoTrack.applyConstraints({ advanced: [{ zoom: clampedZoom } as any] });
+      return true;
+    } catch {
+      supportsNativeZoomRef.current = false;
+      return false;
     }
-  }, []);
+  }, [stream, MIN_ZOOM, MAX_ZOOM]);
+
+  // Apply transform to video element (fallback for CSS zoom)
+  const applyTransform = useCallback(async () => {
+    // Try native zoom first (maintains focus, better quality)
+    const usedNativeZoom = await applyNativeZoom(zoomRef.current);
+    
+    if (videoRef.current) {
+      if (usedNativeZoom) {
+        // Native zoom applied - only use CSS for pan
+        videoRef.current.style.transform = `translateX(${panXRef.current}px)`;
+      } else {
+        // Fallback to CSS zoom + pan
+        videoRef.current.style.transform = `scale(${zoomRef.current}) translateX(${panXRef.current}px)`;
+      }
+    }
+  }, [applyNativeZoom]);
 
   // Clamp value within bounds
   const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -359,29 +409,51 @@ export default function RegisterPage() {
 
     const rotation = getEffectiveRotation();
     const needsRotation = rotation === 90 || rotation === 270;
+    const currentZoom = zoomRef.current;
+    const currentPanX = panXRef.current;
+    const usingNativeZoom = supportsNativeZoomRef.current;
 
-    // Set canvas dimensions based on rotation
-    if (needsRotation) {
-      // Swap dimensions for 90/270 degree rotation (landscape output)
-      canvas.width = videoHeight;
-      canvas.height = videoWidth;
-    } else {
-      canvas.width = videoWidth;
-      canvas.height = videoHeight;
+    // Calculate the cropped region based on zoom and pan
+    // When using native zoom, the video feed is already zoomed - no crop needed
+    // When using CSS fallback zoom, we need to crop the visible region
+    let srcX = 0, srcY = 0, srcW = videoWidth, srcH = videoHeight;
+    
+    if (!usingNativeZoom && currentZoom > 1) {
+      // Calculate the visible region after CSS zoom
+      srcW = videoWidth / currentZoom;
+      srcH = videoHeight / currentZoom;
+      srcX = (videoWidth - srcW) / 2 - (currentPanX * videoWidth) / (currentZoom * video.clientWidth);
+      srcY = (videoHeight - srcH) / 2;
+      
+      // Clamp to valid bounds
+      srcX = Math.max(0, Math.min(srcX, videoWidth - srcW));
+      srcY = Math.max(0, Math.min(srcY, videoHeight - srcH));
     }
 
-    // Apply rotation transformation for correct orientation output
+    // Set canvas dimensions based on rotation (use cropped dimensions)
+    const outputWidth = Math.round(srcW);
+    const outputHeight = Math.round(srcH);
+    
+    if (needsRotation) {
+      canvas.width = outputHeight;
+      canvas.height = outputWidth;
+    } else {
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+    }
+
+    // Draw the cropped/zoomed region with rotation
     ctx.save();
     if (rotation !== 0) {
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate((rotation * Math.PI) / 180);
       if (needsRotation) {
-        ctx.drawImage(video, -videoWidth / 2, -videoHeight / 2, videoWidth, videoHeight);
+        ctx.drawImage(video, srcX, srcY, srcW, srcH, -outputWidth / 2, -outputHeight / 2, outputWidth, outputHeight);
       } else {
-        ctx.drawImage(video, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+        ctx.drawImage(video, srcX, srcY, srcW, srcH, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
       }
     } else {
-      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+      ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, canvas.width, canvas.height);
     }
     ctx.restore();
 
