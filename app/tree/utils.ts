@@ -30,7 +30,12 @@ export const COLORS = {
     TENDRIL_WHITE: 0xeeffff,
     TENDRIL_SILVER: 0xaaddff,
     TENDRIL_CYAN: 0x66ddff,
-    TENDRIL_PURPLE: 0xaa88ff
+    TENDRIL_PURPLE: 0xaa88ff,
+    // Carp fish colors
+    CARP_ORANGE: 0xff6633,
+    CARP_WHITE: 0xffffff,
+    CARP_GOLD: 0xffaa00,
+    CARP_RED: 0xcc3300
 };
 
 export const CONFIG = {
@@ -261,6 +266,138 @@ export function createWater(scene: THREE.Scene) {
     particles.renderOrder = 999;
 
     }
+
+// Create carp fish swimming under water
+export function createCarpFish(scene: THREE.Scene): THREE.Group {
+    const fishGroup = new THREE.Group();
+    fishGroup.name = 'carpFish';
+    
+    const fishColors = [
+        new THREE.Color(COLORS.CARP_ORANGE),
+        new THREE.Color(COLORS.CARP_WHITE),
+        new THREE.Color(COLORS.CARP_GOLD),
+        new THREE.Color(COLORS.CARP_RED)
+    ];
+    
+    const fishCount = 8;
+    
+    for (let i = 0; i < fishCount; i++) {
+        const fish = new THREE.Group();
+        fish.name = `fish_${i}`;
+        
+        // Fish body - elongated ellipsoid
+        const bodyGeo = new THREE.SphereGeometry(1, 16, 12);
+        bodyGeo.scale(1.8, 0.6, 0.5);
+        const color = fishColors[i % fishColors.length];
+        const bodyMat = new THREE.MeshStandardMaterial({
+            color: color,
+            emissive: color,
+            emissiveIntensity: 0.2,
+            roughness: 0.3,
+            metalness: 0.1
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        fish.add(body);
+        
+        // Fish tail
+        const tailShape = new THREE.Shape();
+        tailShape.moveTo(0, 0);
+        tailShape.quadraticCurveTo(0.8, 0.5, 0.6, 1);
+        tailShape.lineTo(0, 0.5);
+        tailShape.lineTo(-0.6, 1);
+        tailShape.quadraticCurveTo(-0.8, 0.5, 0, 0);
+        const tailGeo = new THREE.ShapeGeometry(tailShape);
+        const tailMat = new THREE.MeshStandardMaterial({
+            color: color,
+            emissive: color,
+            emissiveIntensity: 0.15,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9
+        });
+        const tail = new THREE.Mesh(tailGeo, tailMat);
+        tail.position.set(-1.8, 0, 0);
+        tail.rotation.y = Math.PI / 2;
+        tail.scale.set(0.8, 0.8, 1);
+        fish.add(tail);
+        
+        // Dorsal fin
+        const dorsalShape = new THREE.Shape();
+        dorsalShape.moveTo(0, 0);
+        dorsalShape.quadraticCurveTo(0.3, 0.4, 0.6, 0);
+        dorsalShape.lineTo(0, 0);
+        const dorsalGeo = new THREE.ShapeGeometry(dorsalShape);
+        const dorsal = new THREE.Mesh(dorsalGeo, tailMat);
+        dorsal.position.set(0.2, 0.5, 0);
+        dorsal.rotation.x = Math.PI / 2;
+        dorsal.scale.set(1.2, 1, 1);
+        fish.add(dorsal);
+        
+        // Eyes
+        const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(1.4, 0.15, 0.3);
+        fish.add(eyeL);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(1.4, 0.15, -0.3);
+        fish.add(eyeR);
+        
+        // Random position under water
+        const angle = (i / fishCount) * Math.PI * 2 + Math.random() * 0.5;
+        const radius = 25 + Math.random() * 40;
+        fish.position.set(
+            Math.cos(angle) * radius,
+            -3 - Math.random() * 4, // Under water surface
+            Math.sin(angle) * radius
+        );
+        
+        // Random scale
+        const scale = 0.8 + Math.random() * 0.6;
+        fish.scale.set(scale, scale, scale);
+        
+        // Store swimming data
+        fish.userData = {
+            angle: angle,
+            radius: radius,
+            speed: 0.15 + Math.random() * 0.1,
+            yOffset: fish.position.y,
+            phase: Math.random() * Math.PI * 2
+        };
+        
+        fishGroup.add(fish);
+    }
+    
+    scene.add(fishGroup);
+    return fishGroup;
+}
+
+// Update fish swimming animation
+export function updateCarpFish(fishGroup: THREE.Group, time: number) {
+    fishGroup.children.forEach((fish) => {
+        const data = fish.userData;
+        
+        // Circular swimming path
+        data.angle += data.speed * 0.01;
+        fish.position.x = Math.cos(data.angle) * data.radius;
+        fish.position.z = Math.sin(data.angle) * data.radius;
+        
+        // Gentle up/down bobbing
+        fish.position.y = data.yOffset + Math.sin(time * 0.5 + data.phase) * 0.5;
+        
+        // Face swimming direction
+        fish.rotation.y = -data.angle + Math.PI / 2;
+        
+        // Subtle body sway
+        fish.rotation.z = Math.sin(time * 2 + data.phase) * 0.05;
+        
+        // Animate tail
+        const tail = fish.children[1];
+        if (tail) {
+            tail.rotation.z = Math.sin(time * 4 + data.phase) * 0.3;
+        }
+    });
+}
 
 export function createBoat(scene: THREE.Scene) {
     const boatGroup = new THREE.Group();

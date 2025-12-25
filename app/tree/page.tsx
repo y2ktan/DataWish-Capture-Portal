@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createCarpFish, updateCarpFish, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -162,6 +162,7 @@ function TreePageInner() {
             // Animate canopy leaves and tendrils waving in breeze
             updateCanopyLeaves(scene, time);
             updateTendrils(scene, time);
+            updateCarpFish(fishGroup, time);
 
             fireflies.forEach(ff => {
                 // Smooth pulsing glow and abdomen color shift
@@ -240,6 +241,7 @@ function TreePageInner() {
         setupSceneLights(scene);
         createEveningBackground(scene);
         createWater(scene);
+        const fishGroup = createCarpFish(scene);
         boat = scene.getObjectByName("boat") ?? null;
         boatBaseRotY = boat?.rotation.y ?? 0;
         createSpiritTree(scene, perchPoints);
