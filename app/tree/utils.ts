@@ -519,9 +519,11 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         leafPositions[i * 3] = x;
         leafPositions[i * 3 + 1] = y;
         leafPositions[i * 3 + 2] = z;
+        // Random facing direction
         leafBaseRotY[i] = Math.random() * Math.PI * 2;
-        // Tilt leaves outward from center
-        leafBaseRotX[i] = (r / 45) * 0.8 + Math.random() * 0.3;
+        // Flip leaf so drip tip points DOWN (petiole attached above)
+        // π rotation + slight outward tilt for natural hanging
+        leafBaseRotX[i] = Math.PI + (Math.random() - 0.5) * 0.4;
         leafPhase[i] = Math.random() * Math.PI * 2;
 
         // More dark green leaves, fewer light
