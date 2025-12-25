@@ -206,8 +206,8 @@ export function createWater(scene: THREE.Scene) {
         color: COLORS.WATER,
         emissive: COLORS.WATER,
         emissiveIntensity: 1,
-        roughness: 0.0,
-        metalness: 0.9,
+        roughness: 0.5,
+        metalness: 0.7,
         transparent: true,
         opacity: 0.95,
         name: 'waterMat'
@@ -830,9 +830,9 @@ export function updateCanopyLeaves(scene: THREE.Scene, time: number) {
                     const phase = leafPhase[leafIdx];
                     const baseRotX = leafBaseRotX ? leafBaseRotX[leafIdx] : 0;
                     
-                    // Gentle wave rotation for tropical leaves
-                    const waveX = Math.sin(t1 + phase) * 0.1;
-                    const waveZ = Math.cos(t2 + phase * 1.3) * 0.08;
+                    // Gentle sway only - no rotation
+                    const waveX = Math.sin(t1 + phase) * 0.05;
+                    const waveZ = Math.cos(t2 + phase * 1.3) * 0.04;
                     
                     dummy.position.set(
                         leafPositions[leafIdx * 3],
