@@ -102,9 +102,7 @@ function TreePageInner() {
         controls.minDistance = 10;
         controls.maxDistance = CONFIG.ZOOMOUT_MAX_DISTANCE;
         controls.target.set(0, 28, 0);
-        controls.autoRotate = true;
-        // Negative speed gives a clockwise-feeling rotation around the target
-        controls.autoRotateSpeed = -0.3;
+        controls.autoRotate = false;
 
 
         const spawnFirefly = (targetName: string) => {
