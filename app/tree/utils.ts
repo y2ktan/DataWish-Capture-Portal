@@ -483,7 +483,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     leafShape.bezierCurveTo(-0.6, 0.25, -0.12, 0.08, 0, 0);
     
     const leafGeo = new THREE.ShapeGeometry(leafShape);
-    leafGeo.scale(1.4, 1.4, 1);
+    leafGeo.scale(0.7, 0.7, 1);
 
     // Golden color palette matching reference image
     const leafColors = [
@@ -492,8 +492,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         new THREE.Color(COLORS.LEAF_GOLD_LIGHT)
     ];
 
-    // Denser canopy - increased leaf count
-    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 3500);
+    // Denser canopy - smaller leaves, more count
+    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 14000);
     const canopyGroup = new THREE.Group();
     canopyGroup.name = 'canopyLeaves';
 
