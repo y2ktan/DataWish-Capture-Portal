@@ -655,20 +655,25 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         const trunkZ = Math.sin(angle) * trunkRadius;
         const trunkY = Math.min(leafY - 8, 30 + (dist / 50) * 10);
 
-        // Create curved branch with 3 points
-        const midX = (trunkX + leafX) * 0.5;
-        const midZ = (trunkZ + leafZ) * 0.5;
-        const midY = (trunkY + leafY) * 0.5 + 3;
+        // Create shorter curved branch with 3 points
+        const branchLen = 0.4; // Shorter branches
+        const endX = trunkX + (leafX - trunkX) * branchLen;
+        const endZ = trunkZ + (leafZ - trunkZ) * branchLen;
+        const endY = trunkY + (leafY - trunkY) * branchLen;
+        
+        const midX = (trunkX + endX) * 0.5;
+        const midZ = (trunkZ + endZ) * 0.5;
+        const midY = (trunkY + endY) * 0.5 + 1;
 
         const branchPoints = [
             new THREE.Vector3(trunkX, trunkY, trunkZ),
             new THREE.Vector3(midX, midY, midZ),
-            new THREE.Vector3(leafX, leafY - 0.5, leafZ)
+            new THREE.Vector3(endX, endY, endZ)
         ];
 
         const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
-        // Use TubeGeometry with trunk material - thicker branches like reference
-        const branchGeo = new THREE.TubeGeometry(branchCurve, 12, 0.4 + Math.random() * 0.3, 8, false);
+        // Thinner, shorter branches
+        const branchGeo = new THREE.TubeGeometry(branchCurve, 8, 0.15 + Math.random() * 0.1, 6, false);
         const branch = new THREE.Mesh(branchGeo, trunkMaterial);
         branch.frustumCulled = false;
         branchGroup.add(branch);
