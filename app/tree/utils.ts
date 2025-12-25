@@ -655,8 +655,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         const trunkZ = Math.sin(angle) * trunkRadius;
         const trunkY = Math.min(leafY - 8, 30 + (dist / 50) * 10);
 
-        // Create shorter curved branch with 3 points
-        const branchLen = 0.4; // Shorter branches
+        // Create curved branch with 3 points
+        const branchLen = 1; // Branches extend 90% toward leaves
         const endX = trunkX + (leafX - trunkX) * branchLen;
         const endZ = trunkZ + (leafZ - trunkZ) * branchLen;
         const endY = trunkY + (leafY - trunkY) * branchLen;
@@ -672,8 +672,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         ];
 
         const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
-        // Thinner, shorter branches
-        const branchGeo = new THREE.TubeGeometry(branchCurve, 8, 0.15 + Math.random() * 0.1, 6, false);
+        // Thinner branches
+        const branchGeo = new THREE.TubeGeometry(branchCurve, 8, 0.06 + Math.random() * 0.04, 6, false);
         const branch = new THREE.Mesh(branchGeo, trunkMaterial);
         branch.frustumCulled = false;
         branchGroup.add(branch);
