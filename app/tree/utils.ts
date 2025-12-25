@@ -8,14 +8,14 @@ export const COLORS = {
     HEART_LIGHT: 0x00ffff,
     TRUNK_SPOTLIGHT: 0xe0f7ff,
     WATER: 0x000c50,
-    // Dark bark trunk with golden glow veins
-    TRUNK: 0x2a1f1a,
-    TRUNK_EMISSIVE: 0x1a0f0a,
-    TRUNK_VEIN_GLOW: 0xffcc44,
-    // Green tropical leaves - brighter
-    LEAF_GREEN_DARK: 0x2d7a3d,
-    LEAF_GREEN_MID: 0x4aad5a,
-    LEAF_GREEN_LIGHT: 0x6dce7d,
+    // Majestic trunk with golden moonlight shimmer
+    TRUNK: 0x3d2b1f,
+    TRUNK_EMISSIVE: 0x6b4423,
+    TRUNK_VEIN_GLOW: 0xffd866,
+    // Golden Bodhi leaves - amber tones like reference image
+    LEAF_GOLD_DARK: 0xb8860b,
+    LEAF_GOLD_MID: 0xdaa520,
+    LEAF_GOLD_LIGHT: 0xffd700,
     VINE: 0x00ffff,
     GLARE_COLOR: 0xaaffff,
     FIREFLY_LIGHT: 0xffdd88,
@@ -368,13 +368,13 @@ function createTexturedTrunkMaterial() {
     return new THREE.MeshStandardMaterial({
         map: woodColorMap,
         normalMap: woodNormalMap,
-        normalScale: new THREE.Vector2(1.0, 1.0),
+        normalScale: new THREE.Vector2(1.5, 1.5),
         roughnessMap: woodRoughnessMap,
         color: COLORS.TRUNK,
         emissive: COLORS.TRUNK_EMISSIVE,
-        emissiveIntensity: 0.3,
-        roughness: 0.85,
-        metalness: 0,
+        emissiveIntensity: 0.5,
+        roughness: 0.65,
+        metalness: 0.15,
         flatShading: false,
     });
 }
@@ -466,25 +466,34 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
 
     treeGroup.add(veinGroup);
 
-    // 3. Canopy - Large tropical leaves like monstera (using InstancedMesh for performance)
-    // Create larger, more tropical leaf shape
+    // 3. Canopy - Bodhi leaves (heart-shaped with elongated drip tip and vein texture)
     const leafShape = new THREE.Shape();
-    leafShape.moveTo(0, 0);
-    leafShape.bezierCurveTo(0.8, 0.3, 1.2, 1.0, 0.6, 2.0);
-    leafShape.bezierCurveTo(0.3, 2.5, 0, 2.8, 0, 2.8);
-    leafShape.bezierCurveTo(0, 2.8, -0.3, 2.5, -0.6, 2.0);
-    leafShape.bezierCurveTo(-1.2, 1.0, -0.8, 0.3, 0, 0);
+    leafShape.moveTo(0, -0.2); // stem
+    leafShape.lineTo(0, 0);
+    // Right side - heart curve
+    leafShape.bezierCurveTo(0.12, 0.08, 0.6, 0.25, 0.75, 0.7);
+    leafShape.bezierCurveTo(0.85, 1.1, 0.7, 1.6, 0.45, 2.0);
+    leafShape.bezierCurveTo(0.22, 2.35, 0.08, 2.5, 0, 2.6);
+    // Drip tip
+    leafShape.lineTo(0, 3.2);
+    leafShape.lineTo(0, 2.6);
+    // Left side - mirror
+    leafShape.bezierCurveTo(-0.08, 2.5, -0.22, 2.35, -0.45, 2.0);
+    leafShape.bezierCurveTo(-0.7, 1.6, -0.85, 1.1, -0.75, 0.7);
+    leafShape.bezierCurveTo(-0.6, 0.25, -0.12, 0.08, 0, 0);
+    
     const leafGeo = new THREE.ShapeGeometry(leafShape);
-    leafGeo.scale(2.0, 2.0, 1);
+    leafGeo.scale(1.4, 1.4, 1);
 
-    // Green color palette for tropical leaves
+    // Golden color palette matching reference image
     const leafColors = [
-        new THREE.Color(COLORS.LEAF_GREEN_DARK),
-        new THREE.Color(COLORS.LEAF_GREEN_MID),
-        new THREE.Color(COLORS.LEAF_GREEN_LIGHT)
+        new THREE.Color(COLORS.LEAF_GOLD_DARK),
+        new THREE.Color(COLORS.LEAF_GOLD_MID),
+        new THREE.Color(COLORS.LEAF_GOLD_LIGHT)
     ];
 
-    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 2000);
+    // Denser canopy - increased leaf count
+    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 3500);
     const canopyGroup = new THREE.Group();
     canopyGroup.name = 'canopyLeaves';
 
@@ -533,12 +542,12 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         const mat = new THREE.MeshStandardMaterial({
             color: leafColors[c],
             emissive: leafColors[c],
-            emissiveIntensity: 0.3,
+            emissiveIntensity: 0.6,
             transparent: true,
-            opacity: 0.95,
+            opacity: 0.92,
             side: THREE.DoubleSide,
-            roughness: 0.4,
-            metalness: 0.1
+            roughness: 0.25,
+            metalness: 0.35
         });
 
         const mesh = new THREE.InstancedMesh(leafGeo, mat, instanceCounts[c]);
@@ -561,11 +570,11 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         canopyGroup.add(mesh);
     }
 
-    // Add green petioles (stems) connecting leaves to branches
+    // Add golden petioles (stems) connecting leaves to branches
     const petioleMat = new THREE.MeshBasicMaterial({
-        color: 0x2d5a27,
+        color: 0x8b6914,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.85
     });
     const petioleGeo = new THREE.CylinderGeometry(0.03, 0.04, 1, 4);
     petioleGeo.translate(0, -0.5, 0); // Origin at top
