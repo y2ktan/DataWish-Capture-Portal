@@ -544,7 +544,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
             const center = box.getCenter(new THREE.Vector3());
             
             // Scale the model to fit the scene (target height ~60 units)
-            const targetHeight = 80;
+            const targetHeight = 70;
             const scale = targetHeight / size.y;
             model.scale.setScalar(scale);
             
