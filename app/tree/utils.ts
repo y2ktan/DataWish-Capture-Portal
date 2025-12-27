@@ -854,15 +854,18 @@ export function updateFireflyWings(ff: FireflyState, time: number, isFlying: boo
 }
 
 export function setRandomFlightTarget(ff: { target: THREE.Vector3, state: string }) {
-    const r = 15 + Math.random() * 30;
+    // Keep fireflies close to tree - radius 3-12 units (was 15-45)
+    const r = 3 + Math.random() * 9;
     const theta = Math.random() * Math.PI * 2;
-    const treeTopFireflyPercentage = 0.1;
-
+    
+    // Most fireflies stay in canopy area (y: 15-45), some near trunk (y: 5-15)
     let y;
-    if (Math.random() > treeTopFireflyPercentage) {
-        y = 5 + Math.random() * 25;
+    if (Math.random() > 0.3) {
+        // 70% in canopy area
+        y = 15 + Math.random() * 30;
     } else {
-        y = 30 + Math.random() * 15;
+        // 30% near trunk/lower
+        y = 5 + Math.random() * 10;
     }
 
     ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
@@ -1014,10 +1017,10 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     bodyGroup.rotation.x = Math.PI / 2;
     group.add(bodyGroup);
 
-    // Random starting position
-    const r = 20 + Math.random() * 20;
+    // Random starting position - close to tree
+    const r = 3 + Math.random() * 9;
     const ang = Math.random() * Math.PI * 2;
-    group.position.set(Math.cos(ang) * r, 10 + Math.random() * 20, Math.sin(ang) * r);
+    group.position.set(Math.cos(ang) * r, 15 + Math.random() * 30, Math.sin(ang) * r);
     group.frustumCulled = false;
     group.renderOrder = 998;
 
