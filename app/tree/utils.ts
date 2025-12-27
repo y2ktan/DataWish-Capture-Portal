@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export const COLORS = {
     FOG: 0x000205,
@@ -528,431 +529,113 @@ function createGlowVeinMaterial() {
 
 export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[]): THREE.Group {
     const treeGroup = new THREE.Group();
-
-    const trunkMaterial = createTexturedTrunkMaterial();
-
-    const createLimb = (points: THREE.Vector3[], radius: number) => {
-        const curve = new THREE.CatmullRomCurve3(points);
-        const geo = new THREE.TubeGeometry(curve, 20, radius, 8, false);
-        return new THREE.Mesh(geo, trunkMaterial);
-    };
-
-    // 1. Twisted Banyan Trunk
-    for (let i = 0; i < CONFIG.TRUNC_COUNT; i++) {
-        const angleOffset = (i / CONFIG.TRUNC_COUNT) * Math.PI * 2;
-        const points = [];
-
-        points.push(new THREE.Vector3(Math.cos(angleOffset) * 12, -5, Math.sin(angleOffset) * 12));
-
-        for (let h = 0; h <= 30; h += 5) {
-            const ang = angleOffset + (h * 0.05);
-            const clusterR = 7 - (h / 30) * 4;
-            points.push(new THREE.Vector3(Math.cos(ang) * clusterR, h, Math.sin(ang) * clusterR));
-
-            if (Math.random() > 0.7) {
-                perchPoints.push(new THREE.Vector3(Math.cos(ang) * clusterR, h, Math.sin(ang) * clusterR));
-            }
-        }
-
-        const outAng = angleOffset + (30 * 0.05);
-        const branchLen = 15 + Math.random() * 10;
-        points.push(new THREE.Vector3(Math.cos(outAng) * (3 + branchLen), 30 + (branchLen * 0.5), Math.sin(outAng) * (3 + branchLen)));
-
-        treeGroup.add(createLimb(points, 1.5 + Math.random()));
-    }
-
-    // 2. Extra Roots
-    for (let i = 0; i < CONFIG.TRUNC_COUNT * 2; i++) {
-        const angle = (i / (CONFIG.TRUNC_COUNT * 2)) * Math.PI * 2;
-        const dist = 15 + Math.random() * 12;
-        const points = [];
-        points.push(new THREE.Vector3(Math.cos(angle) * dist, -2, Math.sin(angle) * dist));
-        points.push(new THREE.Vector3(Math.cos(angle) * (dist * 0.5), 5, Math.sin(angle) * (dist * 0.5)));
-        points.push(new THREE.Vector3(Math.cos(angle) * 5, 2, Math.sin(angle) * 5));
-        treeGroup.add(createLimb(points, 0.7));
-    }
-
-    // 2.5. Glowing veins on trunk (golden bioluminescent lines)
-    const veinMaterial = createGlowVeinMaterial();
-    const veinGroup = new THREE.Group();
-    veinGroup.name = 'trunkVeins';
-
-    for (let v = 0; v < 12; v++) {
-        const veinPoints: THREE.Vector3[] = [];
-        const startAngle = (v / 12) * Math.PI * 2 + Math.random() * 0.3;
-        const spiralRate = 0.08 + Math.random() * 0.05;
-        
-        // Create winding vein path up the trunk
-        for (let h = -3; h <= 32; h += 2) {
-            const ang = startAngle + h * spiralRate;
-            const baseR = 4 - (h / 35) * 2;
-            const wobble = Math.sin(h * 0.5) * 0.5;
-            veinPoints.push(new THREE.Vector3(
-                Math.cos(ang) * (baseR + wobble),
-                h,
-                Math.sin(ang) * (baseR + wobble)
-            ));
-        }
-
-        const veinCurve = new THREE.CatmullRomCurve3(veinPoints);
-        const veinGeo = new THREE.TubeGeometry(veinCurve, 30, 0.08 + Math.random() * 0.04, 4, false);
-        const vein = new THREE.Mesh(veinGeo, veinMaterial);
-        vein.frustumCulled = false;
-        veinGroup.add(vein);
-    }
-
-    treeGroup.add(veinGroup);
-
-    // 3. Canopy - Bodhi leaves (heart-shaped with elongated drip tip and vein texture)
-    const leafShape = new THREE.Shape();
-    leafShape.moveTo(0, -0.2); // stem
-    leafShape.lineTo(0, 0);
-    // Right side - heart curve
-    leafShape.bezierCurveTo(0.12, 0.08, 0.6, 0.25, 0.75, 0.7);
-    leafShape.bezierCurveTo(0.85, 1.1, 0.7, 1.6, 0.45, 2.0);
-    leafShape.bezierCurveTo(0.22, 2.35, 0.08, 2.5, 0, 2.6);
-    // Drip tip
-    leafShape.lineTo(0, 3.2);
-    leafShape.lineTo(0, 2.6);
-    // Left side - mirror
-    leafShape.bezierCurveTo(-0.08, 2.5, -0.22, 2.35, -0.45, 2.0);
-    leafShape.bezierCurveTo(-0.7, 1.6, -0.85, 1.1, -0.75, 0.7);
-    leafShape.bezierCurveTo(-0.6, 0.25, -0.12, 0.08, 0, 0);
+    treeGroup.name = 'spiritTree';
     
-    const leafGeo = new THREE.ShapeGeometry(leafShape);
-    leafGeo.scale(0.7, 0.7, 1);
-
-    // Green color palette matching reference image
-    const leafColors = [
-        new THREE.Color(COLORS.LEAF_GREEN_DARK),
-        new THREE.Color(COLORS.LEAF_GREEN_MID),
-        new THREE.Color(COLORS.LEAF_GREEN_LIGHT)
-    ];
-
-    // Denser canopy - smaller leaves, more count
-    const leafCount = Math.min(CONFIG.LEAVES_COUNT, 14000);
-    const canopyGroup = new THREE.Group();
-    canopyGroup.name = 'canopyLeaves';
-
-    // Pre-allocate typed arrays for animation data
-    const leafPositions = new Float32Array(leafCount * 3);
-    const leafBaseRotY = new Float32Array(leafCount);
-    const leafBaseRotX = new Float32Array(leafCount);
-    const leafPhase = new Float32Array(leafCount);
-
-    // Create 3 instanced meshes (one per color) for efficiency
-    const instanceCounts = [0, 0, 0];
-    const tempIndices: number[][] = [[], [], []];
-
-    for (let i = 0; i < leafCount; i++) {
-        // Distribute leaves in a dome canopy shape
-        const r = Math.pow(Math.random(), 0.5) * 45;
-        const theta = Math.random() * Math.PI * 2;
-        const x = Math.cos(theta) * r;
-        const z = Math.sin(theta) * r;
-        // Dome shape - higher in center, lower at edges
-        const y = 35 + Math.cos((r / 45) * (Math.PI / 2)) * 28 - (Math.random() * 8);
-
-        leafPositions[i * 3] = x;
-        leafPositions[i * 3 + 1] = y;
-        leafPositions[i * 3 + 2] = z;
-        // Random facing direction
-        leafBaseRotY[i] = Math.random() * Math.PI * 2;
-        // Flip leaf so drip tip points DOWN (petiole attached above)
-        // π rotation + slight outward tilt for natural hanging
-        leafBaseRotX[i] = Math.PI + (Math.random() - 0.5) * 0.4;
-        leafPhase[i] = Math.random() * Math.PI * 2;
-
-        // More dark green leaves, fewer light
-        const colorIdx = Math.random() < 0.5 ? 0 : (Math.random() < 0.6 ? 1 : 2);
-        tempIndices[colorIdx].push(i);
-        instanceCounts[colorIdx]++;
-
-        if (i % 40 === 0) perchPoints.push(new THREE.Vector3(x, y, z));
-    }
-
-    // Create instanced meshes for each color
-    const instancedMeshes: THREE.InstancedMesh[] = [];
-    const dummy = new THREE.Object3D();
-
-    for (let c = 0; c < 3; c++) {
-        if (instanceCounts[c] === 0) continue;
-
-        const mat = new THREE.MeshStandardMaterial({
-            color: leafColors[c],
-            emissive: leafColors[c],
-            emissiveIntensity: 0.6,
-            transparent: true,
-            opacity: 0.92,
-            side: THREE.DoubleSide,
-            roughness: 0.25,
-            metalness: 0.35
-        });
-
-        const mesh = new THREE.InstancedMesh(leafGeo, mat, instanceCounts[c]);
-        mesh.frustumCulled = false;
-
-        // Set initial transforms
-        tempIndices[c].forEach((leafIdx, instanceIdx) => {
-            const x = leafPositions[leafIdx * 3];
-            const y = leafPositions[leafIdx * 3 + 1];
-            const z = leafPositions[leafIdx * 3 + 2];
-
-            dummy.position.set(x, y, z);
-            dummy.rotation.set(leafBaseRotX[leafIdx], leafBaseRotY[leafIdx], 0);
-            dummy.updateMatrix();
-            mesh.setMatrixAt(instanceIdx, dummy.matrix);
-        });
-
-        mesh.instanceMatrix.needsUpdate = true;
-        instancedMeshes.push(mesh);
-        canopyGroup.add(mesh);
-    }
-
-    // Add dark green petioles (stems) connecting leaves to branches
-    const petioleMat = new THREE.MeshBasicMaterial({
-        color: 0x2d5a1e,
-        transparent: true,
-        opacity: 0.85
-    });
-    const petioleGeo = new THREE.CylinderGeometry(0.03, 0.04, 1, 4);
-    petioleGeo.translate(0, -0.5, 0); // Origin at top
-
-    const petioleGroup = new THREE.Group();
-    petioleGroup.name = 'petioles';
-
-    // Store petiole data for animation
-    const petioleMeshes: THREE.Mesh[] = [];
-    const petioleBaseRotX = new Float32Array(leafCount);
-    const petioleBaseRotZ = new Float32Array(leafCount);
-
-    for (let i = 0; i < leafCount; i++) {
-        const x = leafPositions[i * 3];
-        const y = leafPositions[i * 3 + 1];
-        const z = leafPositions[i * 3 + 2];
-
-        const petiole = new THREE.Mesh(petioleGeo, petioleMat);
-        petiole.position.set(x, y, z);
-        
-        // Angle stem toward trunk center
-        const angle = Math.atan2(z, x);
-        const tiltX = 0.3 + Math.random() * 0.2;
-        const tiltZ = 0.3 + Math.random() * 0.2;
-        
-        petioleBaseRotX[i] = tiltX;
-        petioleBaseRotZ[i] = tiltZ;
-        
-        petiole.rotation.set(tiltX, angle + Math.PI, tiltZ);
-        petiole.frustumCulled = false;
-        
-        petioleMeshes.push(petiole);
-        petioleGroup.add(petiole);
-    }
-
-    petioleGroup.userData = {
-        petioleMeshes,
-        petioleBaseRotX,
-        petioleBaseRotZ,
-        leafPhase,
-        leafCount
-    };
-
-    canopyGroup.add(petioleGroup);
-
-    // Store animation data
-    canopyGroup.userData = {
-        leafPositions,
-        leafBaseRotY,
-        leafBaseRotX,
-        leafPhase,
-        leafCount,
-        tempIndices,
-        instancedMeshes,
-        petioleGroup
-    };
-
-    treeGroup.add(canopyGroup);
-
-    // Add branches from trunk to leaf clusters (using same material as trunk)
-    const branchGroup = new THREE.Group();
-    branchGroup.name = 'branches';
-
-    for (let i = 0; i < leafCount; i += 25) {
-        const leafX = leafPositions[i * 3];
-        const leafY = leafPositions[i * 3 + 1];
-        const leafZ = leafPositions[i * 3 + 2];
-
-        // Calculate trunk attachment point
-        const trunkRadius = 4;
-        const dist = Math.sqrt(leafX * leafX + leafZ * leafZ);
-        const angle = Math.atan2(leafZ, leafX);
-        
-        // Branch starts from trunk at a lower height
-        const trunkX = Math.cos(angle) * trunkRadius;
-        const trunkZ = Math.sin(angle) * trunkRadius;
-        const trunkY = Math.min(leafY - 8, 30 + (dist / 50) * 10);
-
-        // Create curved branch with 3 points
-        const branchLen = 1; // Branches extend 90% toward leaves
-        const endX = trunkX + (leafX - trunkX) * branchLen;
-        const endZ = trunkZ + (leafZ - trunkZ) * branchLen;
-        const endY = trunkY + (leafY - trunkY) * branchLen;
-        
-        const midX = (trunkX + endX) * 0.5;
-        const midZ = (trunkZ + endZ) * 0.5;
-        const midY = (trunkY + endY) * 0.5 + 1;
-
-        const branchPoints = [
-            new THREE.Vector3(trunkX, trunkY, trunkZ),
-            new THREE.Vector3(midX, midY, midZ),
-            new THREE.Vector3(endX, endY, endZ)
-        ];
-
-        const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
-        // Thinner branches
-        const branchGeo = new THREE.TubeGeometry(branchCurve, 8, 0.06 + Math.random() * 0.04, 6, false);
-        const branch = new THREE.Mesh(branchGeo, trunkMaterial);
-        branch.frustumCulled = false;
-        branchGroup.add(branch);
-    }
-
-    treeGroup.add(branchGroup);
-
-    // 4. BIOLUMINESCENT TENDRILS - hanging from branches (silvery white glow)
-    const tendrilColors = [
-        new THREE.Color(COLORS.TENDRIL_WHITE),
-        new THREE.Color(COLORS.TENDRIL_SILVER),
-        new THREE.Color(COLORS.TENDRIL_CYAN),
-        new THREE.Color(COLORS.TENDRIL_PURPLE)
-    ];
-
-    const tendrilGroup = new THREE.Group();
-    tendrilGroup.name = 'tendrils';
-
-    // Collect branch endpoints for tendril attachment
-    const branchEndpoints: THREE.Vector3[] = [];
-    for (let i = 0; i < leafCount; i += 25) {
-        const x = leafPositions[i * 3];
-        const y = leafPositions[i * 3 + 1];
-        const z = leafPositions[i * 3 + 2];
-        branchEndpoints.push(new THREE.Vector3(x, y, z));
-    }
-
-    // Create tendrils hanging from branch endpoints and along branches
-    const tendrilsPerBranch = Math.ceil(CONFIG.TENDRIL_COUNT / branchEndpoints.length);
-    
-    branchEndpoints.forEach((branchEnd, branchIdx) => {
-        for (let t = 0; t < tendrilsPerBranch; t++) {
-            // Vary position slightly along and around branch
-            const offsetAngle = Math.random() * Math.PI * 2;
-            const offsetRadius = Math.random() * 3;
-            const startX = branchEnd.x + Math.cos(offsetAngle) * offsetRadius;
-            const startZ = branchEnd.z + Math.sin(offsetAngle) * offsetRadius;
-            const startY = branchEnd.y - Math.random() * 5;
+    // Load the stylized tree GLB model
+    const loader = new GLTFLoader();
+    loader.load(
+        '/assets/stylized tree 3d model.glb',
+        (gltf) => {
+            const model = gltf.scene;
             
-            const tendrilLength = 8 + Math.random() * 20;
-            const segments = 10;
+            // Calculate bounding box to determine scale and position
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
             
-            // Store base positions for animation
-            const basePositions: THREE.Vector3[] = [];
-            for (let j = 0; j <= segments; j++) {
-                const s = j / segments;
-                basePositions.push(new THREE.Vector3(
-                    startX,
-                    startY - tendrilLength * s,
-                    startZ
-                ));
-            }
-
-            // Create tendril geometry - thin silvery strands
-            const tendrilColor = tendrilColors[Math.floor(Math.random() * tendrilColors.length)];
-            const curve = new THREE.CatmullRomCurve3(basePositions);
-            const tendrilGeo = new THREE.TubeGeometry(curve, segments * 2, 0.02 + Math.random() * 0.02, 4, false);
+            // Scale the model to fit the scene (target height ~60 units)
+            const targetHeight = 60;
+            const scale = targetHeight / size.y;
+            model.scale.setScalar(scale);
             
-            const tendrilMat = new THREE.MeshBasicMaterial({
-                color: tendrilColor,
-                transparent: true,
-                opacity: 0.6 + Math.random() * 0.3,
-                blending: THREE.AdditiveBlending
+            // Center the model horizontally and position at ground level
+            model.position.set(
+                -center.x * scale,
+                -box.min.y * scale,
+                -center.z * scale
+            );
+            
+            // Enhance materials for the magical atmosphere
+            model.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.frustumCulled = false;
+                    
+                    // Check if geometry has vertex colors
+                    const hasVertexColors = child.geometry?.attributes?.color != null;
+                    
+                    // Handle both single material and material arrays
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach((mat) => {
+                        if (mat) {
+                            // Only enable vertex colors if geometry has them
+                            if (hasVertexColors) {
+                                mat.vertexColors = true;
+                            }
+                            
+                            // Ensure material is visible
+                            mat.visible = true;
+                            mat.side = THREE.DoubleSide;
+                            
+                            // Handle textures and materials
+                            if (mat instanceof THREE.MeshStandardMaterial) {
+                                // Ensure texture uses correct color space
+                                if (mat.map) {
+                                    mat.map.colorSpace = THREE.SRGBColorSpace;
+                                    // Keep color white to show texture colors properly
+                                    mat.color = new THREE.Color(0xffffff);
+                                    // Add subtle moonlight glow without washing out texture
+                                    mat.emissive = new THREE.Color(0x334433); // Subtle green-tinted moonlight
+                                    mat.emissiveIntensity = 0.4;
+                                } else {
+                                    // No texture - apply tree colors directly
+                                    mat.color = new THREE.Color(0x4a7c3a);
+                                    mat.emissive = new THREE.Color(0x2d5a1e);
+                                    mat.emissiveIntensity = 0.5;
+                                }
+                                
+                                mat.roughness = 0.6;
+                                mat.metalness = 0.0;
+                            }
+                            
+                            mat.needsUpdate = true;
+                        }
+                    });
+                }
             });
             
-            const tendril = new THREE.Mesh(tendrilGeo, tendrilMat);
-            tendril.frustumCulled = false;
+            treeGroup.add(model);
             
-            // Store animation data
-            tendril.userData = {
-                basePositions: basePositions,
-                phaseOffset: Math.random() * Math.PI * 2,
-                swayAmount: 0.5 + Math.random() * 1.5,
-                swaySpeed: 0.5 + Math.random() * 0.5,
-                segments: segments,
-                length: tendrilLength
-            };
+            // Generate perch points from the model's bounding box
+            const scaledBox = new THREE.Box3().setFromObject(model);
+            const scaledSize = scaledBox.getSize(new THREE.Vector3());
+            const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
             
-            tendrilGroup.add(tendril);
-
-            // Add glowing particles along some tendrils
-            if (Math.random() > 0.6) {
-                const particleCount = Math.floor(tendrilLength / 4);
-                const particleGeo = new THREE.BufferGeometry();
-                const particlePos = new Float32Array(particleCount * 3);
-                const particleCol = new Float32Array(particleCount * 3);
-
-                for (let p = 0; p < particleCount; p++) {
-                    const pt = curve.getPoint(p / particleCount);
-                    particlePos[p * 3] = pt.x + (Math.random() - 0.5) * 0.3;
-                    particlePos[p * 3 + 1] = pt.y + (Math.random() - 0.5) * 0.3;
-                    particlePos[p * 3 + 2] = pt.z + (Math.random() - 0.5) * 0.3;
-                    particleCol[p * 3] = tendrilColor.r;
-                    particleCol[p * 3 + 1] = tendrilColor.g;
-                    particleCol[p * 3 + 2] = tendrilColor.b;
-                }
-
-                particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-                particleGeo.setAttribute('color', new THREE.BufferAttribute(particleCol, 3));
-
-                const particleMat = new THREE.PointsMaterial({
-                    size: 0.4,
-                    vertexColors: true,
-                    transparent: true,
-                    opacity: 0.7,
-                    blending: THREE.AdditiveBlending,
-                    depthWrite: false
-                });
-
-                const particles = new THREE.Points(particleGeo, particleMat);
-                particles.frustumCulled = false;
-                tendrilGroup.add(particles);
+            // Create perch points distributed around the canopy area
+            for (let i = 0; i < 50; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = Math.random() * scaledSize.x * 0.4;
+                const y = scaledCenter.y + scaledSize.y * 0.1 + Math.random() * scaledSize.y * 0.35;
+                perchPoints.push(new THREE.Vector3(
+                    Math.cos(theta) * r,
+                    y,
+                    Math.sin(theta) * r
+                ));
             }
+        },
+        (progress) => {
+            // Loading progress
+            console.log('Loading tree model:', (progress.loaded / progress.total * 100).toFixed(1) + '%');
+        },
+        (error) => {
+            console.error('Error loading tree model:', error);
         }
-    });
-
-    treeGroup.add(tendrilGroup);
-
-    // 5. Short vines
-    const vineMat = new THREE.LineBasicMaterial({
-        color: COLORS.VINE,
-        transparent: true,
-        opacity: 0.35,
-        blending: THREE.AdditiveBlending
-    });
-
-    for (let i = 0; i < CONFIG.VINE_COUNT; i++) {
-        const r = 15 + Math.random() * 20;
-        const theta = Math.random() * Math.PI * 2;
-        const startY = 40 + Math.cos((r / 40) * (Math.PI / 2)) * 10;
-        const points = [
-            new THREE.Vector3(Math.cos(theta) * r, startY, Math.sin(theta) * r),
-            new THREE.Vector3(Math.cos(theta) * r, startY - (10 + Math.random() * 20), Math.sin(theta) * r)
-        ];
-        treeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), vineMat));
-    }
-
-    // Position the tree lower so trunk/vines are closer to bottom
+    );
+    
+    // Position the tree group
     treeGroup.position.y = -5;
-
+    
     scene.add(treeGroup);
-
+    
     return treeGroup;
 }
 
