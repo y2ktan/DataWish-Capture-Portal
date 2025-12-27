@@ -951,7 +951,7 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     group.add(innerGlare);
 
     // 2. Warm Light Source
-    const light = new THREE.PointLight(COLORS.FIREFLY_LIGHT, 0.8, 8);
+    const light = new THREE.PointLight(COLORS.FIREFLY_LIGHT, 100, 820);
     light.frustumCulled = false;
     light.position.set(0, -0.2, 0);
     group.add(light);
