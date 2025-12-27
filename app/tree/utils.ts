@@ -544,7 +544,7 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
             const center = box.getCenter(new THREE.Vector3());
             
             // Scale the model to fit the scene (target height ~60 units)
-            const targetHeight = 60;
+            const targetHeight = 80;
             const scale = targetHeight / size.y;
             model.scale.setScalar(scale);
             
@@ -616,6 +616,29 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
             });
             
             treeGroup.add(model);
+
+            // Add global ambient light to ensure tree is visible everywhere
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+            treeGroup.add(ambientLight);
+            
+            // Add hemisphere light for natural outdoor lighting (Sky color, Ground color, Intensity)
+            const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x0f0e0d, 1);
+            treeGroup.add(hemiLight);
+
+            // Add strong lights to illuminate the tree brightly
+            const treeLight = new THREE.PointLight(0xffffff, 5, 300); // Increased intensity and distance
+            treeLight.position.set(0, 50, 30); 
+            treeGroup.add(treeLight);
+            
+            // Add fill light from behind
+            const fillLight = new THREE.PointLight(0xaaccff, 5, 200);
+            fillLight.position.set(0, 30, -30);
+            treeGroup.add(fillLight);
+            
+            // Add side light for depth
+            const sideLight = new THREE.PointLight(0xffeecc, 5, 200);
+            sideLight.position.set(40, 25, 0);
+            treeGroup.add(sideLight);
             
             // Generate perch points from the model's bounding box
             const scaledBox = new THREE.Box3().setFromObject(model);
