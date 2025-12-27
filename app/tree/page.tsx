@@ -54,6 +54,9 @@ function TreePageInner() {
         const glareMat = createGlareMaterial();
         let boat: THREE.Object3D | null = null;
         let boatBaseRotY = 0;
+        let treeGroup: THREE.Group;
+        let treeMaterials: THREE.MeshStandardMaterial[] = [];
+        let materialsCollected = false;
 
         let width = containerRef.current.clientWidth;
         let height = containerRef.current.clientHeight;
@@ -215,7 +218,7 @@ function TreePageInner() {
                 ff.label.style.opacity = isOffScreen ? '0.4' : '1';
                 ff.label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
             });
-                // Pulse the tree and make trunks brighter when zoomed out
+                // Pulse the tree and make it brighter when zoomed out
                 const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
                 let zoomBrightness = 1;
                 if (camera && controls) {
@@ -229,7 +232,19 @@ function TreePageInner() {
                     const eased = Math.pow(t, 1.6);
                     zoomBrightness = minB + eased * (maxB - minB);
                 }
-                trunkMeshes.forEach((mat) => {
+                // Lazily collect tree materials once model is loaded
+                if (!materialsCollected && treeGroup.children.length > 0) {
+                    treeGroup.traverse((obj) => {
+                        if (obj instanceof THREE.Mesh && obj.material) {
+                            const mat = obj.material as THREE.MeshStandardMaterial;
+                            if (mat.emissive) {
+                                treeMaterials.push(mat);
+                            }
+                        }
+                    });
+                    materialsCollected = treeMaterials.length > 0;
+                }
+                treeMaterials.forEach((mat: THREE.MeshStandardMaterial) => {
                     mat.emissiveIntensity = pulse * zoomBrightness;
                 });
 
@@ -244,18 +259,7 @@ function TreePageInner() {
         const fishGroup = createCarpFish(scene);
         boat = scene.getObjectByName("boat") ?? null;
         boatBaseRotY = boat?.rotation.y ?? 0;
-        createSpiritTree(scene, perchPoints);
-
-        // Cache trunk meshes for animation loop optimization
-        const trunkMeshes: THREE.MeshStandardMaterial[] = [];
-        scene.traverse((obj) => {
-            if (obj instanceof THREE.Mesh && obj.material.name !== 'waterMat' && (obj.material as any).emissive) {
-                const mat = obj.material as THREE.MeshStandardMaterial;
-                if (mat.color && mat.color.b > 0.5) {
-                    trunkMeshes.push(mat);
-                }
-            }
-        });
+        treeGroup = createSpiritTree(scene, perchPoints);
 
         // Expose spawn function FIRST
         spawnRef.current = spawnFirefly;
