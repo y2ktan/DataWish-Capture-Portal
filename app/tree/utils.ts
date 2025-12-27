@@ -560,16 +560,42 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
                 if (child instanceof THREE.Mesh) {
                     child.frustumCulled = false;
                     
-                    if (child.material) {
-                        const mat = child.material as THREE.MeshStandardMaterial;
-                        // Add subtle emissive glow
-                        if (mat.color) {
-                            mat.emissive = mat.color.clone().multiplyScalar(0.3);
-                            mat.emissiveIntensity = 0.5;
+                    // Check if geometry has vertex colors
+                    const hasVertexColors = child.geometry?.attributes?.color != null;
+                    
+                    // Handle both single material and material arrays
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach((mat) => {
+                        if (mat) {
+                            // Only enable vertex colors if geometry has them
+                            if (hasVertexColors) {
+                                mat.vertexColors = true;
+                            }
+                            
+                            // Ensure material is visible
+                            mat.visible = true;
+                            mat.side = THREE.DoubleSide;
+                            
+                            // Handle textures and materials
+                            if (mat instanceof THREE.MeshStandardMaterial) {
+                                // Ensure texture uses correct color space
+                                if (mat.map) {
+                                    mat.map.colorSpace = THREE.SRGBColorSpace;
+                                    // Don't add strong emissive when there's a texture - it washes out colors
+                                    mat.emissive = new THREE.Color(0x111111);
+                                    mat.emissiveIntensity = 0.3;
+                                } else if (mat.color) {
+                                    // No texture - use color-based emissive
+                                    mat.emissive = mat.color.clone().multiplyScalar(0.2);
+                                    mat.emissiveIntensity = 0.4;
+                                }
+                                mat.roughness = 0.7;
+                                mat.metalness = 0.0;
+                            }
+                            
+                            mat.needsUpdate = true;
                         }
-                        mat.roughness = 0.6;
-                        mat.metalness = 0.1;
-                    }
+                    });
                 }
             });
             
