@@ -829,8 +829,8 @@ export function updateFireflyGlow(ff: FireflyState, time: number) {
         ff.outerGlare.material.opacity = 0.2 + smoothPulse * 0.3;
     }
     
-    // Light intensity
-    ff.light.intensity = 0.3 + smoothPulse * 0.8;
+    // Light intensity - scales with the PointLight base intensity
+    ff.light.intensity = 150 + smoothPulse * 100;
     
     // Abdomen color shift: warm orange -> bright golden
     if (ff.abdomenMat) {
