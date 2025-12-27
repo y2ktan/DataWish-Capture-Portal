@@ -12,10 +12,10 @@ export const COLORS = {
     TRUNK: 0x3d2b1f,
     TRUNK_EMISSIVE: 0x6b4423,
     TRUNK_VEIN_GLOW: 0xffd866,
-    // Golden Bodhi leaves - amber tones like reference image
-    LEAF_GOLD_DARK: 0xb8860b,
-    LEAF_GOLD_MID: 0xdaa520,
-    LEAF_GOLD_LIGHT: 0xffd700,
+    // Vibrant green Bodhi leaves - lime green tones like reference image
+    LEAF_GREEN_DARK: 0x5a8c2a,
+    LEAF_GREEN_MID: 0x8bc34a,
+    LEAF_GREEN_LIGHT: 0xcddc39,
     VINE: 0x00ffff,
     GLARE_COLOR: 0xaaffff,
     FIREFLY_LIGHT: 0xffdd88,
@@ -622,11 +622,11 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     const leafGeo = new THREE.ShapeGeometry(leafShape);
     leafGeo.scale(0.7, 0.7, 1);
 
-    // Golden color palette matching reference image
+    // Green color palette matching reference image
     const leafColors = [
-        new THREE.Color(COLORS.LEAF_GOLD_DARK),
-        new THREE.Color(COLORS.LEAF_GOLD_MID),
-        new THREE.Color(COLORS.LEAF_GOLD_LIGHT)
+        new THREE.Color(COLORS.LEAF_GREEN_DARK),
+        new THREE.Color(COLORS.LEAF_GREEN_MID),
+        new THREE.Color(COLORS.LEAF_GREEN_LIGHT)
     ];
 
     // Denser canopy - smaller leaves, more count
@@ -709,9 +709,9 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
         canopyGroup.add(mesh);
     }
 
-    // Add golden petioles (stems) connecting leaves to branches
+    // Add dark green petioles (stems) connecting leaves to branches
     const petioleMat = new THREE.MeshBasicMaterial({
-        color: 0x8b6914,
+        color: 0x2d5a1e,
         transparent: true,
         opacity: 0.85
     });
