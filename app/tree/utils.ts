@@ -581,15 +581,19 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
                                 // Ensure texture uses correct color space
                                 if (mat.map) {
                                     mat.map.colorSpace = THREE.SRGBColorSpace;
-                                    // Don't add strong emissive when there's a texture - it washes out colors
-                                    mat.emissive = new THREE.Color(0x111111);
-                                    mat.emissiveIntensity = 0.3;
-                                } else if (mat.color) {
-                                    // No texture - use color-based emissive
-                                    mat.emissive = mat.color.clone().multiplyScalar(0.2);
+                                    // Keep color white to show texture colors properly
+                                    mat.color = new THREE.Color(0xffffff);
+                                    // Add subtle moonlight glow without washing out texture
+                                    mat.emissive = new THREE.Color(0x334433); // Subtle green-tinted moonlight
                                     mat.emissiveIntensity = 0.4;
+                                } else {
+                                    // No texture - apply tree colors directly
+                                    mat.color = new THREE.Color(0x4a7c3a);
+                                    mat.emissive = new THREE.Color(0x2d5a1e);
+                                    mat.emissiveIntensity = 0.5;
                                 }
-                                mat.roughness = 0.7;
+                                
+                                mat.roughness = 0.6;
                                 mat.metalness = 0.0;
                             }
                             

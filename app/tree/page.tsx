@@ -246,7 +246,8 @@ function TreePageInner() {
                     materialsCollected = treeMaterials.length > 0;
                 }
                 treeMaterials.forEach((mat: THREE.MeshStandardMaterial) => {
-                    mat.emissiveIntensity = pulse * zoomBrightness;
+                    // Constant brightness instead of pulsing for GLB model
+                    mat.emissiveIntensity = 0.5 * zoomBrightness;
                 });
 
             if (controls) controls.update();
