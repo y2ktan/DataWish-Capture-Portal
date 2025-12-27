@@ -555,6 +555,18 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
                 -center.z * scale
             );
             
+            // Debug: log model structure
+            console.log('=== GLB Model Structure ===');
+            model.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const hasVC = child.geometry?.attributes?.color != null;
+                    const mat = child.material as THREE.MeshStandardMaterial;
+                    console.log(`Mesh: "${child.name}", hasVertexColors: ${hasVC}`);
+                    console.log(`  Material: type=${mat?.type}, color=${mat?.color?.getHexString()}, hasMap=${!!mat?.map}`);
+                }
+            });
+            console.log('=== End Structure ===');
+            
             // Enhance materials for the magical atmosphere
             model.traverse((child) => {
                 if (child instanceof THREE.Mesh) {
@@ -578,21 +590,21 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
                             
                             // Handle textures and materials
                             if (mat instanceof THREE.MeshStandardMaterial) {
-                                // Ensure texture uses correct color space
                                 if (mat.map) {
+                                    // Has texture - ensure correct color space
                                     mat.map.colorSpace = THREE.SRGBColorSpace;
-                                    // Keep color white to show texture colors properly
+                                    mat.emissive = new THREE.Color(0x111111);
+                                    mat.emissiveIntensity = 0.3;
+                                } else if (hasVertexColors) {
+                                    // Has vertex colors - keep color white, add subtle glow
                                     mat.color = new THREE.Color(0xffffff);
-                                    // Add subtle moonlight glow without washing out texture
-                                    mat.emissive = new THREE.Color(0x334433); // Subtle green-tinted moonlight
+                                    mat.emissive = new THREE.Color(0x222222);
                                     mat.emissiveIntensity = 0.4;
                                 } else {
-                                    // No texture - apply tree colors directly
-                                    mat.color = new THREE.Color(0x4a7c3a);
+                                    // No texture or vertex colors - use material color
                                     mat.emissive = new THREE.Color(0x2d5a1e);
-                                    mat.emissiveIntensity = 0.5;
+                                    mat.emissiveIntensity = 0.4;
                                 }
-                                
                                 mat.roughness = 0.6;
                                 mat.metalness = 0.0;
                             }
