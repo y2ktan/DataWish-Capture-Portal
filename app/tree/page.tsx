@@ -54,6 +54,10 @@ function TreePageInner() {
         const glareMat = createGlareMaterial();
         let boat: THREE.Object3D | null = null;
         let boatBaseRotY = 0;
+        let treeGroup: THREE.Group;
+        let treeMaterials: THREE.MeshStandardMaterial[] = [];
+        let materialsCollected = false;
+        const treeCenter = new THREE.Vector3(0, 25, 0); // Approximate tree center for boundary checks
 
         let width = containerRef.current.clientWidth;
         let height = containerRef.current.clientHeight;
@@ -72,6 +76,7 @@ function TreePageInner() {
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputColorSpace = THREE.SRGBColorSpace; // Fix for GLB color rendering
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
 
@@ -173,7 +178,25 @@ function TreePageInner() {
                 updateFireflyWings(ff, time, isFlying);
 
                 const pos = ff.obj.position;
-                const dist = pos.distanceTo(ff.target);
+                // Boundary checks
+                // 1. Water level check - prevent diving into water
+                if (pos.y < 4) {
+                    pos.y = 4;
+                    // If flying low, push target up to prevent getting stuck
+                    if (ff.state === 'FLYING' || ff.state === 'APPROACHING') {
+                        ff.target.y = Math.max(ff.target.y, 10);
+                    }
+                }
+
+                // 2. Max distance check - prevent flying off into void
+                const distToCenter = pos.distanceTo(treeCenter);
+                if (distToCenter > 80) { // Increased from 60 to allow near-camera flights
+                    // Pull back to tree
+                    const pullDir = new THREE.Vector3().subVectors(treeCenter, pos).normalize();
+                    pos.add(pullDir.multiplyScalar(ff.speed * delta * 2)); // Strong pull
+                    // Reset target to be closer
+                    if (Math.random() > 0.95) setRandomFlightTarget(ff);
+                }
 
                 if (ff.state === 'FLYING') {
                     const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
@@ -184,20 +207,37 @@ function TreePageInner() {
 
                     pos.add(dir.multiplyScalar(ff.speed * delta));
 
+                    const dist = pos.distanceTo(ff.target);
                     if (dist < 3) {
                         if (Math.random() > 0.3) setPerchTarget(ff, perchPoints);
                         else setRandomFlightTarget(ff);
                     }
                 } else if (ff.state === 'APPROACHING') {
-                    const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
-                    pos.add(dir.multiplyScalar(ff.speed * delta));
-
-                    if (dist < 0.5) {
+                    const dist = pos.distanceTo(ff.target);
+                    const moveStep = ff.speed * delta;
+                    
+                    // Prevent overshooting: if close enough, snap to target
+                    if (dist < moveStep || dist < 0.5) {
+                        pos.copy(ff.target);
                         ff.state = 'PERCHED';
                         ff.timer = 2 + Math.random() * 4;
+                        ff.perchY = pos.y;
+                    } else {
+                        const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
+                        pos.add(dir.multiplyScalar(moveStep));
+                    }
+                    
+                    // Watchdog: If stuck in APPROACHING for too long (e.g. target unreachable), reset
+                    // We can use a simple distance check or random chance to abort if taking too long
+                    if (Math.random() < 0.005) { // Occasional check to unstuck
+                         setRandomFlightTarget(ff);
                     }
                 } else if (ff.state === 'PERCHED') {
-                    pos.y += Math.sin(time * 5) * 0.005;
+                    // Stable bobbing using initial perch Y
+                    if (ff.perchY !== undefined) {
+                        pos.y = ff.perchY + Math.sin(time * 3) * 0.1;
+                    }
+                    
                     ff.timer -= delta;
                     if (ff.timer <= 0) setRandomFlightTarget(ff);
                 }
@@ -215,7 +255,7 @@ function TreePageInner() {
                 ff.label.style.opacity = isOffScreen ? '0.4' : '1';
                 ff.label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
             });
-                // Pulse the tree and make trunks brighter when zoomed out
+                // Pulse the tree and make it brighter when zoomed out
                 const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
                 let zoomBrightness = 1;
                 if (camera && controls) {
@@ -229,8 +269,21 @@ function TreePageInner() {
                     const eased = Math.pow(t, 1.6);
                     zoomBrightness = minB + eased * (maxB - minB);
                 }
-                trunkMeshes.forEach((mat) => {
-                    mat.emissiveIntensity = pulse * zoomBrightness;
+                // Lazily collect tree materials once model is loaded
+                if (!materialsCollected && treeGroup.children.length > 0) {
+                    treeGroup.traverse((obj) => {
+                        if (obj instanceof THREE.Mesh && obj.material) {
+                            const mat = obj.material as THREE.MeshStandardMaterial;
+                            if (mat.emissive) {
+                                treeMaterials.push(mat);
+                            }
+                        }
+                    });
+                    materialsCollected = treeMaterials.length > 0;
+                }
+                treeMaterials.forEach((mat: THREE.MeshStandardMaterial) => {
+                    // Constant brightness instead of pulsing for GLB model
+                    mat.emissiveIntensity = 0.5 * zoomBrightness;
                 });
 
             if (controls) controls.update();
@@ -244,18 +297,7 @@ function TreePageInner() {
         const fishGroup = createCarpFish(scene);
         boat = scene.getObjectByName("boat") ?? null;
         boatBaseRotY = boat?.rotation.y ?? 0;
-        createSpiritTree(scene, perchPoints);
-
-        // Cache trunk meshes for animation loop optimization
-        const trunkMeshes: THREE.MeshStandardMaterial[] = [];
-        scene.traverse((obj) => {
-            if (obj instanceof THREE.Mesh && obj.material.name !== 'waterMat' && (obj.material as any).emissive) {
-                const mat = obj.material as THREE.MeshStandardMaterial;
-                if (mat.color && mat.color.b > 0.5) {
-                    trunkMeshes.push(mat);
-                }
-            }
-        });
+        treeGroup = createSpiritTree(scene, perchPoints);
 
         // Expose spawn function FIRST
         spawnRef.current = spawnFirefly;
