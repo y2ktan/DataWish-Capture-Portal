@@ -190,7 +190,7 @@ function TreePageInner() {
 
                 // 2. Max distance check - prevent flying off into void
                 const distToCenter = pos.distanceTo(treeCenter);
-                if (distToCenter > 100) { // Increased from 60 to allow near-camera flights
+                if (distToCenter > 80) { // Increased from 60 to allow near-camera flights
                     // Pull back to tree
                     const pullDir = new THREE.Vector3().subVectors(treeCenter, pos).normalize();
                     pos.add(pullDir.multiplyScalar(ff.speed * delta * 2)); // Strong pull
