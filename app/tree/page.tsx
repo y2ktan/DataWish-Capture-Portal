@@ -200,6 +200,23 @@ function TreePageInner() {
 
                 if (ff.state === 'FLYING') {
                     const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
+                    
+                    // Stuck detection
+                    if (!ff._lastPos) ff._lastPos = pos.clone();
+                    if (!ff._stuckFrames) ff._stuckFrames = 0;
+                    const movedDist = pos.distanceTo(ff._lastPos);
+                    if (movedDist < 0.01) {
+                        ff._stuckFrames++;
+                        if (ff._stuckFrames > 60) {
+                            console.log(`[FIREFLY] ${ff.label.textContent} reset - stuck in FLYING for ${ff._stuckFrames} frames`);
+                            setRandomFlightTarget(ff);
+                            ff._stuckFrames = 0;
+                        }
+                    } else {
+                        ff._stuckFrames = 0;
+                    }
+                    ff._lastPos.copy(pos);
+                    
                     dir.x += Math.sin(time * 2 + ff.blinkOffset) * 0.5;
                     dir.y += Math.cos(time * 1.5 + ff.blinkOffset) * 0.5;
                     dir.z += Math.sin(time * 2.5 + ff.blinkOffset) * 0.5;
@@ -211,10 +228,16 @@ function TreePageInner() {
                     if (dist < 3) {
                         if (Math.random() > 0.3) setPerchTarget(ff, perchPoints);
                         else setRandomFlightTarget(ff);
+                        ff._approachStartTime = undefined;
+                        ff._stuckFrames = 0;
                     }
                 } else if (ff.state === 'APPROACHING') {
                     const dist = pos.distanceTo(ff.target);
                     const moveStep = ff.speed * delta;
+                    
+                    // Track time in APPROACHING state for watchdog
+                    if (!ff._approachStartTime) ff._approachStartTime = time;
+                    const approachDuration = time - ff._approachStartTime;
                     
                     // Prevent overshooting: if close enough, snap to target
                     if (dist < moveStep || dist < 0.5) {
@@ -222,15 +245,17 @@ function TreePageInner() {
                         ff.state = 'PERCHED';
                         ff.timer = 2 + Math.random() * 4;
                         ff.perchY = pos.y;
+                        ff._approachStartTime = undefined;
                     } else {
                         const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
                         pos.add(dir.multiplyScalar(moveStep));
                     }
                     
-                    // Watchdog: If stuck in APPROACHING for too long (e.g. target unreachable), reset
-                    // We can use a simple distance check or random chance to abort if taking too long
-                    if (Math.random() < 0.005) { // Occasional check to unstuck
-                         setRandomFlightTarget(ff);
+                    // Watchdog: If stuck in APPROACHING for too long, reset
+                    if (approachDuration > 8) {
+                        console.log(`[FIREFLY] ${ff.label.textContent} reset - stuck for ${approachDuration.toFixed(1)}s`);
+                        setRandomFlightTarget(ff);
+                        ff._approachStartTime = undefined;
                     }
                 } else if (ff.state === 'PERCHED') {
                     // Stable bobbing using initial perch Y
