@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, createCarpFish, updateCarpFish, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createCarpFish, updateCarpFish, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -57,6 +57,8 @@ function TreePageInner() {
         let treeGroup: THREE.Group;
         let treeMaterials: THREE.MeshStandardMaterial[] = [];
         let materialsCollected = false;
+        let waterMesh: THREE.Mesh;
+        let waterParticles: THREE.Points;
         const treeCenter = new THREE.Vector3(0, 25, 0); // Approximate tree center for boundary checks
 
         let width = containerRef.current.clientWidth;
@@ -168,6 +170,11 @@ function TreePageInner() {
             updateCanopyLeaves(scene, time);
             updateTendrils(scene, time);
             updateCarpFish(fishGroup, time);
+            
+            // Animate water waves and particles
+            if (waterMesh && waterParticles) {
+                updateWater(waterMesh, waterParticles, time);
+            }
 
             fireflies.forEach(ff => {
                 // Smooth pulsing glow and abdomen color shift
@@ -318,7 +325,9 @@ function TreePageInner() {
         // --- Execution Flow ---
         setupSceneLights(scene);
         createEveningBackground(scene);
-        createWater(scene);
+        const waterResult = createWater(scene);
+        waterMesh = waterResult.water;
+        waterParticles = waterResult.particles;
         const fishGroup = createCarpFish(scene);
         boat = scene.getObjectByName("boat") ?? null;
         boatBaseRotY = boat?.rotation.y ?? 0;

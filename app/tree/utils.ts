@@ -206,27 +206,46 @@ export function updateStars(scene: THREE.Scene, time: number) {
     });
 }
 
-export function createWater(scene: THREE.Scene) {
-    const waterGeo = new THREE.PlaneGeometry(300, 300);
+export function createWater(scene: THREE.Scene): { water: THREE.Mesh, particles: THREE.Points } {
+    // Use higher segment count for wave animation
+    const waterGeo = new THREE.PlaneGeometry(300, 300, 64, 64);
     const waterMat = new THREE.MeshStandardMaterial({
         color: COLORS.WATER,
         emissive: COLORS.WATER,
-        emissiveIntensity: 1,
-        roughness: 0.5,
-        metalness: 0.7,
+        emissiveIntensity: 0.6,
+        roughness: 0.6,
+        metalness: 0.4,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.92,
         name: 'waterMat'
     });
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.rotation.x = -Math.PI / 2;
+    water.name = 'water';
     scene.add(water);
 
+    // Add soft edge gradient ring
+    const edgeGeo = new THREE.RingGeometry(120, 150, 64);
+    const edgeMat = new THREE.MeshBasicMaterial({
+        color: COLORS.WATER,
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const edge = new THREE.Mesh(edgeGeo, edgeMat);
+    edge.rotation.x = -Math.PI / 2;
+    edge.position.y = 0.1;
+    edge.name = 'waterEdge';
+    scene.add(edge);
+
     // Add floating light particles above water
-    const particleCount = 8000; // Reduced count with better distribution
+    const particleCount = 8000;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
     const particleColors = new Float32Array(particleCount * 3);
+    // Store original positions for animation
+    const particleOriginal = new Float32Array(particleCount * 3);
 
     const color1 = new THREE.Color(0x00ffff); // Cyan
     const color2 = new THREE.Color(0x4488ff); // Blue
@@ -236,9 +255,18 @@ export function createWater(scene: THREE.Scene) {
         // Spread particles across water surface
         const angle = Math.random() * Math.PI * 2;
         const radius = 30 + Math.random() * 100;
-        particlePos[i * 3] = Math.cos(angle) * radius;
-        particlePos[i * 3 + 1] = 0.5 + Math.random() * 2; // Just above water
-        particlePos[i * 3 + 2] = Math.sin(angle) * radius;
+        const x = Math.cos(angle) * radius;
+        const y = 0.5 + Math.random() * 2;
+        const z = Math.sin(angle) * radius;
+        
+        particlePos[i * 3] = x;
+        particlePos[i * 3 + 1] = y;
+        particlePos[i * 3 + 2] = z;
+        
+        // Store original for animation reference
+        particleOriginal[i * 3] = x;
+        particleOriginal[i * 3 + 1] = y;
+        particleOriginal[i * 3 + 2] = z;
 
         // Random colors
         const c = Math.random() < 0.5 ? color1 : (Math.random() < 0.7 ? color2 : color3);
@@ -249,6 +277,7 @@ export function createWater(scene: THREE.Scene) {
 
     particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
     particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+    particleGeo.setAttribute('original', new THREE.BufferAttribute(particleOriginal, 3));
 
     const particleMat = new THREE.PointsMaterial({
         size: 0.3,
@@ -263,10 +292,57 @@ export function createWater(scene: THREE.Scene) {
 
     const particles = new THREE.Points(particleGeo, particleMat);
     particles.frustumCulled = false;
+    particles.name = 'waterParticles';
     scene.add(particles);
     particles.renderOrder = 999;
 
+    return { water, particles };
+}
+
+// Update water animation - call this in the animation loop
+export function updateWater(water: THREE.Mesh, particles: THREE.Points, time: number) {
+    // Animate water waves
+    const positions = water.geometry.attributes.position as THREE.BufferAttribute;
+    const posArray = positions.array as Float32Array;
+    
+    for (let i = 0; i < positions.count; i++) {
+        const x = posArray[i * 3];
+        const z = posArray[i * 3 + 1]; // Note: z is stored in y due to rotation
+        
+        // Multi-frequency waves for natural look
+        const wave1 = Math.sin(x * 0.05 + time * 0.8) * 0.4;
+        const wave2 = Math.cos(z * 0.07 + time * 0.6) * 0.3;
+        const wave3 = Math.sin((x + z) * 0.03 + time * 1.2) * 0.2;
+        
+        posArray[i * 3 + 2] = wave1 + wave2 + wave3;
     }
+    positions.needsUpdate = true;
+    water.geometry.computeVertexNormals();
+    
+    // Animate particles - gentle drift and bobbing
+    const particlePos = particles.geometry.attributes.position as THREE.BufferAttribute;
+    const originalPos = particles.geometry.attributes.original as THREE.BufferAttribute;
+    const pArray = particlePos.array as Float32Array;
+    const oArray = originalPos.array as Float32Array;
+    
+    for (let i = 0; i < particlePos.count; i++) {
+        const ox = oArray[i * 3];
+        const oy = oArray[i * 3 + 1];
+        const oz = oArray[i * 3 + 2];
+        
+        // Slow circular drift
+        const driftAngle = time * 0.1 + i * 0.001;
+        const driftRadius = 2;
+        
+        // Bobbing motion
+        const bob = Math.sin(time * 2 + i * 0.5) * 0.3;
+        
+        pArray[i * 3] = ox + Math.cos(driftAngle) * driftRadius;
+        pArray[i * 3 + 1] = oy + bob;
+        pArray[i * 3 + 2] = oz + Math.sin(driftAngle) * driftRadius;
+    }
+    particlePos.needsUpdate = true;
+}
 
 // Create carp fish swimming under water
 export function createCarpFish(scene: THREE.Scene): THREE.Group {
