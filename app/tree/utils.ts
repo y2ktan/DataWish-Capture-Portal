@@ -299,6 +299,97 @@ export function createWater(scene: THREE.Scene): { water: THREE.Mesh, particles:
     return { water, particles };
 }
 
+// Create white swans swimming on water surface
+export function createSwans(scene: THREE.Scene): THREE.Group {
+    const swanGroup = new THREE.Group();
+    swanGroup.name = 'swans';
+    
+    const loader = new GLTFLoader();
+    
+    loader.load(
+        '/assets/white+swan+3d+model.glb',
+        (gltf) => {
+            const swanModel = gltf.scene;
+            const swanCount = 3;
+            
+            for (let i = 0; i < swanCount; i++) {
+                const swan = swanModel.clone();
+                
+                // Make swan white and slightly glowing
+                swan.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        const oldMat = Array.isArray(child.material) ? child.material[0] : child.material;
+                        const mat = oldMat.clone();
+                        child.material = mat;
+                        
+                        if (mat instanceof THREE.MeshStandardMaterial) {
+                            mat.color.setHex(0xffffff);
+                            mat.emissive.setHex(0x333344);
+                            mat.emissiveIntensity = 0.3;
+                            mat.roughness = 0.6;
+                            mat.metalness = 0.1;
+                        }
+                    }
+                });
+                
+                // Position on water surface, swimming around tree
+                const angle = (i / swanCount) * Math.PI * 2 + Math.random() * 0.5;
+                const radius = 35 + Math.random() * 25; // Outer ring, beyond fish
+                swan.position.set(
+                    Math.cos(angle) * radius,
+                    0.3, // Just above water surface
+                    Math.sin(angle) * radius
+                );
+                
+                // Scale swan appropriately (doubled size)
+                const scale = 6 + Math.random() * 2;
+                swan.scale.set(scale, scale, scale);
+                
+                // Store swimming data
+                swan.userData = {
+                    angle: angle,
+                    radius: radius,
+                    speed: 0.015 + Math.random() * 0.01, // Very slow, graceful
+                    phase: Math.random() * Math.PI * 2,
+                    bobSpeed: 1 + Math.random() * 0.5
+                };
+                
+                swanGroup.add(swan);
+            }
+        },
+        undefined,
+        (error) => {
+            console.error('Error loading swan model:', error);
+        }
+    );
+    
+    scene.add(swanGroup);
+    return swanGroup;
+}
+
+// Update swan swimming animation
+export function updateSwans(swanGroup: THREE.Group, time: number) {
+    swanGroup.children.forEach((swan) => {
+        const data = swan.userData;
+        if (!data.angle) return;
+        
+        // Slow circular swimming
+        data.angle += data.speed * 0.016; // Approximate delta
+        
+        swan.position.x = Math.cos(data.angle) * data.radius;
+        swan.position.z = Math.sin(data.angle) * data.radius;
+        
+        // Gentle bobbing on water
+        swan.position.y = 0.3 + Math.sin(time * data.bobSpeed + data.phase) * 0.15;
+        
+        // Face swimming direction (forward, not sideways)
+        swan.rotation.y = -data.angle + Math.PI;
+        
+        // Subtle body sway
+        swan.rotation.z = Math.sin(time * 1.5 + data.phase) * 0.02;
+    });
+}
+
 // Update water animation - call this in the animation loop
 export function updateWater(water: THREE.Mesh, particles: THREE.Points, time: number) {
     // Animate water waves

@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createCarpFish, updateCarpFish, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createSwans, updateSwans, createCarpFish, updateCarpFish, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -59,6 +59,7 @@ function TreePageInner() {
         let materialsCollected = false;
         let waterMesh: THREE.Mesh;
         let waterParticles: THREE.Points;
+        let swanGroup: THREE.Group;
         const treeCenter = new THREE.Vector3(0, 25, 0); // Approximate tree center for boundary checks
 
         let width = containerRef.current.clientWidth;
@@ -174,6 +175,11 @@ function TreePageInner() {
             // Animate water waves and particles
             if (waterMesh && waterParticles) {
                 updateWater(waterMesh, waterParticles, time);
+            }
+            
+            // Animate swans
+            if (swanGroup) {
+                updateSwans(swanGroup, time);
             }
 
             fireflies.forEach(ff => {
@@ -328,6 +334,7 @@ function TreePageInner() {
         const waterResult = createWater(scene);
         waterMesh = waterResult.water;
         waterParticles = waterResult.particles;
+        swanGroup = createSwans(scene);
         const fishGroup = createCarpFish(scene);
         boat = scene.getObjectByName("boat") ?? null;
         boatBaseRotY = boat?.rotation.y ?? 0;
