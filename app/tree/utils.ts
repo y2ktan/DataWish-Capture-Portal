@@ -32,11 +32,11 @@ export const COLORS = {
     TENDRIL_SILVER: 0xaaddff,
     TENDRIL_CYAN: 0x66ddff,
     TENDRIL_PURPLE: 0xaa88ff,
-    // Carp fish colors
-    CARP_ORANGE: 0xff6633,
+    // Carp fish colors - Bright Orange Red theme
+    CARP_ORANGE: 0xff4500, // OrangeRed
     CARP_WHITE: 0xffffff,
-    CARP_GOLD: 0xffaa00,
-    CARP_RED: 0xcc3300
+    CARP_GOLD: 0xff8800,
+    CARP_RED: 0xff2400     // Scarlet
 };
 
 export const CONFIG = {
@@ -293,7 +293,7 @@ export function createCarpFish(scene: THREE.Scene): THREE.Group {
         const bodyMat = new THREE.MeshStandardMaterial({
             color: color,
             emissive: color,
-            emissiveIntensity: 0.2,
+            emissiveIntensity: 0.6, // Increased brightness
             roughness: 0.3,
             metalness: 0.1
         });
@@ -311,7 +311,7 @@ export function createCarpFish(scene: THREE.Scene): THREE.Group {
         const tailMat = new THREE.MeshStandardMaterial({
             color: color,
             emissive: color,
-            emissiveIntensity: 0.15,
+            emissiveIntensity: 0.5, // Increased brightness
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.9

@@ -177,7 +177,25 @@ function TreePageInner() {
                 updateFireflyWings(ff, time, isFlying);
 
                 const pos = ff.obj.position;
-                const dist = pos.distanceTo(ff.target);
+                // Boundary checks
+                // 1. Water level check - prevent diving into water
+                if (pos.y < 4) {
+                    pos.y = 4;
+                    // If flying low, push up
+                    if (ff.state === 'FLYING') {
+                        ff.target.y = Math.max(ff.target.y, 10);
+                    }
+                }
+
+                // 2. Max distance check - prevent flying off into void
+                const distToCenter = pos.distanceTo(treeCenter);
+                if (distToCenter > 60) {
+                    // Pull back to tree
+                    const pullDir = new THREE.Vector3().subVectors(treeCenter, pos).normalize();
+                    pos.add(pullDir.multiplyScalar(ff.speed * delta * 2)); // Strong pull
+                    // Reset target to be closer
+                    if (Math.random() > 0.95) setRandomFlightTarget(ff);
+                }
 
                 if (ff.state === 'FLYING') {
                     const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
@@ -188,6 +206,7 @@ function TreePageInner() {
 
                     pos.add(dir.multiplyScalar(ff.speed * delta));
 
+                    const dist = pos.distanceTo(ff.target);
                     if (dist < 3) {
                         if (Math.random() > 0.3) setPerchTarget(ff, perchPoints);
                         else setRandomFlightTarget(ff);
@@ -195,13 +214,20 @@ function TreePageInner() {
                 } else if (ff.state === 'APPROACHING') {
                     const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
                     pos.add(dir.multiplyScalar(ff.speed * delta));
+                    const dist = pos.distanceTo(ff.target);
 
                     if (dist < 0.5) {
                         ff.state = 'PERCHED';
                         ff.timer = 2 + Math.random() * 4;
+                        // Store initial perch Y for stable bobbing
+                        ff.perchY = pos.y;
                     }
                 } else if (ff.state === 'PERCHED') {
-                    pos.y += Math.sin(time * 5) * 0.005;
+                    // Stable bobbing using initial perch Y
+                    if (ff.perchY !== undefined) {
+                        pos.y = ff.perchY + Math.sin(time * 3) * 0.1;
+                    }
+                    
                     ff.timer -= delta;
                     if (ff.timer <= 0) setRandomFlightTarget(ff);
                 }
