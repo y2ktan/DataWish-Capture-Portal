@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createSwans, updateSwans, createCarpFish, updateCarpFish, createSpiritTree, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createSwans, updateSwans, createCarpFish, updateCarpFish, createSpiritTree, createHillocksAndPagoda, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -336,6 +336,7 @@ function TreePageInner() {
         waterParticles = waterResult.particles;
         swanGroup = createSwans(scene);
         const fishGroup = createCarpFish(scene);
+        createHillocksAndPagoda(scene);
         boat = scene.getObjectByName("boat") ?? null;
         boatBaseRotY = boat?.rotation.y ?? 0;
         treeGroup = createSpiritTree(scene, perchPoints);

@@ -672,6 +672,114 @@ export function createBoat(scene: THREE.Scene) {
     scene.add(boatGroup);
 }
 
+// Create hillocks around the pond with Chinese pagodas
+export function createHillocksAndPagoda(scene: THREE.Scene) {
+    const hillockGroup = new THREE.Group();
+    hillockGroup.name = 'hillocks';
+
+    // Grass material for hillocks
+    const grassMat = new THREE.MeshStandardMaterial({
+        color: 0x1a3d0c,
+        emissive: 0x0a1505,
+        emissiveIntensity: 0.15,
+        roughness: 0.95,
+        metalness: 0.0
+    });
+
+    // Define hillock positions around the pond
+    const hillockData = [
+        { x: -80, z: -60, radius: 30, height: 10, pagodaScale: 15 },
+        { x: 75, z: -55, radius: 25, height: 8, pagodaScale: 12 },
+        { x: -70, z: 65, radius: 28, height: 9, pagodaScale: 13 },
+        { x: 80, z: 60, radius: 22, height: 7, pagodaScale: 10 },
+    ];
+
+    const loader = new GLTFLoader();
+
+    hillockData.forEach((data, index) => {
+        // Create hillock using half-sphere for gentle shape
+        const hillGeo = new THREE.SphereGeometry(data.radius, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const hill = new THREE.Mesh(hillGeo, grassMat);
+        hill.position.set(data.x, 0, data.z);
+        hill.scale.set(1.2, data.height / data.radius, 1.0);
+        hillockGroup.add(hill);
+
+        // Add terrain bumps around hillock
+        for (let i = 0; i < 5; i++) {
+            const bumpRadius = 5 + Math.random() * 8;
+            const bumpGeo = new THREE.SphereGeometry(bumpRadius, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+            const bump = new THREE.Mesh(bumpGeo, grassMat);
+            const angle = (i / 5) * Math.PI * 2;
+            const dist = data.radius * 0.6 + Math.random() * 10;
+            bump.position.set(
+                data.x + Math.cos(angle) * dist,
+                0,
+                data.z + Math.sin(angle) * dist
+            );
+            bump.scale.set(1, 0.25 + Math.random() * 0.15, 1);
+            hillockGroup.add(bump);
+        }
+
+        // Load pagoda for this hillock
+        const hillTopY = data.height * 0.8;
+
+        loader.load(
+            '/assets/pagoda+3d+model.glb',
+            (gltf) => {
+                const pagodaModel = gltf.scene.clone();
+                pagodaModel.name = `pagoda_${index}`;
+
+                // Position on hillock summit
+                pagodaModel.position.set(data.x, hillTopY, data.z);
+                pagodaModel.scale.set(data.pagodaScale, data.pagodaScale, data.pagodaScale);
+
+                // Enhance materials for moonlight visibility
+                pagodaModel.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        const materials = Array.isArray(child.material) ? child.material : [child.material];
+                        materials.forEach((mat) => {
+                            if (mat instanceof THREE.MeshStandardMaterial) {
+                                mat.emissive = new THREE.Color(0x333333);
+                                mat.emissiveIntensity = 0.4;
+                                mat.needsUpdate = true;
+                            }
+                        });
+                    }
+                });
+
+                hillockGroup.add(pagodaModel);
+
+                // Add lighting for this pagoda
+                const pagodaY = hillTopY + 15;
+
+                // Moonlight from above
+                const moonSpot = new THREE.SpotLight(0xffffcc, 10, 150, Math.PI / 3, 0.4);
+                moonSpot.position.set(data.x, pagodaY + 60, data.z);
+                moonSpot.target.position.set(data.x, pagodaY, data.z);
+                hillockGroup.add(moonSpot);
+                hillockGroup.add(moonSpot.target);
+
+                // Ambient glow around pagoda
+                const ambientGlow = new THREE.PointLight(0xffffee, 5, 80);
+                ambientGlow.position.set(data.x, pagodaY + 10, data.z);
+                hillockGroup.add(ambientGlow);
+
+                // Front fill light
+                const fillLight = new THREE.PointLight(0xffffff, 4, 60);
+                fillLight.position.set(data.x + 20, pagodaY, data.z + 20);
+                hillockGroup.add(fillLight);
+            },
+            undefined,
+            (error) => {
+                console.error(`Error loading pagoda ${index}:`, error);
+            }
+        );
+    });
+
+    scene.add(hillockGroup);
+    return hillockGroup;
+}
+
 function createTexturedTrunkMaterial() {
     const loader = new THREE.TextureLoader();
     const woodColorMap = loader.load('/assets/textures/wood_bark.jpg', undefined, undefined, () => {});
