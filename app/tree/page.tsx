@@ -182,8 +182,8 @@ function TreePageInner() {
                 // 1. Water level check - prevent diving into water
                 if (pos.y < 4) {
                     pos.y = 4;
-                    // If flying low, push up
-                    if (ff.state === 'FLYING') {
+                    // If flying low, push target up to prevent getting stuck
+                    if (ff.state === 'FLYING' || ff.state === 'APPROACHING') {
                         ff.target.y = Math.max(ff.target.y, 10);
                     }
                 }
@@ -213,15 +213,24 @@ function TreePageInner() {
                         else setRandomFlightTarget(ff);
                     }
                 } else if (ff.state === 'APPROACHING') {
-                    const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
-                    pos.add(dir.multiplyScalar(ff.speed * delta));
                     const dist = pos.distanceTo(ff.target);
-
-                    if (dist < 0.5) {
+                    const moveStep = ff.speed * delta;
+                    
+                    // Prevent overshooting: if close enough, snap to target
+                    if (dist < moveStep || dist < 0.5) {
+                        pos.copy(ff.target);
                         ff.state = 'PERCHED';
                         ff.timer = 2 + Math.random() * 4;
-                        // Store initial perch Y for stable bobbing
                         ff.perchY = pos.y;
+                    } else {
+                        const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
+                        pos.add(dir.multiplyScalar(moveStep));
+                    }
+                    
+                    // Watchdog: If stuck in APPROACHING for too long (e.g. target unreachable), reset
+                    // We can use a simple distance check or random chance to abort if taking too long
+                    if (Math.random() < 0.005) { // Occasional check to unstuck
+                         setRandomFlightTarget(ff);
                     }
                 } else if (ff.state === 'PERCHED') {
                     // Stable bobbing using initial perch Y

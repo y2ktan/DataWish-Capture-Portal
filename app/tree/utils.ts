@@ -640,6 +640,9 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
             sideLight.position.set(40, 25, 0);
             treeGroup.add(sideLight);
             
+            // Ensure model matrices are updated so bounding box is correct in world space
+            model.updateMatrixWorld(true);
+
             // Generate perch points from the model's bounding box
             const scaledBox = new THREE.Box3().setFromObject(model);
             const scaledSize = scaledBox.getSize(new THREE.Vector3());
@@ -650,11 +653,18 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
                 const theta = Math.random() * Math.PI * 2;
                 const r = Math.random() * scaledSize.x * 0.4;
                 const y = scaledCenter.y + scaledSize.y * 0.1 + Math.random() * scaledSize.y * 0.35;
-                perchPoints.push(new THREE.Vector3(
-                    Math.cos(theta) * r,
-                    y,
-                    Math.sin(theta) * r
-                ));
+                
+                // Only add points that are high enough (above water/ground)
+                // treeGroup is at -5, so points relative to it might need adjustment if using local
+                // But setFromObject usually gives World if parent in scene. 
+                // To be safe, we explicitly check y > 8
+                if (y > 8) {
+                    perchPoints.push(new THREE.Vector3(
+                        Math.cos(theta) * r,
+                        y,
+                        Math.sin(theta) * r
+                    ));
+                }
             }
         },
         (progress) => {
@@ -853,36 +863,40 @@ export function updateFireflyWings(ff: FireflyState, time: number, isFlying: boo
     ff.wingR.rotation.z = -Math.PI / 5 - flutter;
 }
 
-export function setRandomFlightTarget(ff: { target: THREE.Vector3, state: string }) {
+export function setRandomFlightTarget(ff: any) {
     const rand = Math.random();
+    const currentPos = ff.obj ? ff.obj.position : new THREE.Vector3();
+    let attempts = 0;
     
-    if (rand < 0.2) {
-        // ZONE 1: NEAR CAMERA (High Radius)
-        // Camera is approx at z=100, so we target r=60-90 to fly near it
-        const r = 60 + Math.random() * 30;
-        // Limit angle to front semicircle (-PI/2 to PI/2) so they are actually near camera
-        const theta = (Math.random() - 0.5) * Math.PI; 
-        const y = 10 + Math.random() * 30;
-        ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
-    } else if (rand < 0.4) {
-        // ZONE 2: ABOVE TREE (High Altitude)
-        const r = Math.random() * 20;
-        const theta = Math.random() * Math.PI * 2;
-        const y = 50 + Math.random() * 30; // 50 to 80 units high
-        ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
-    } else {
-        // ZONE 3: STANDARD TREE AREA (Canopy & Trunk)
-        const r = 3 + Math.random() * 12; // Slightly widened to 15
-        const theta = Math.random() * Math.PI * 2;
-        
-        let y;
-        if (Math.random() > 0.3) {
-            y = 15 + Math.random() * 30; // Canopy
+    // Try up to 3 times to find a target far enough away
+    do {
+        if (rand < 0.2) {
+            // ZONE 1: NEAR CAMERA (High Radius)
+            const r = 60 + Math.random() * 30;
+            const theta = (Math.random() - 0.5) * Math.PI; 
+            const y = 10 + Math.random() * 30;
+            ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
+        } else if (rand < 0.4) {
+            // ZONE 2: ABOVE TREE (High Altitude)
+            const r = Math.random() * 20;
+            const theta = Math.random() * Math.PI * 2;
+            const y = 50 + Math.random() * 30;
+            ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
         } else {
-            y = 5 + Math.random() * 10; // Trunk
+            // ZONE 3: STANDARD TREE AREA (Canopy & Trunk)
+            const r = 5 + Math.random() * 15; // Minimum 5 radius
+            const theta = Math.random() * Math.PI * 2;
+            
+            let y;
+            if (Math.random() > 0.3) {
+                y = 15 + Math.random() * 30; // Canopy
+            } else {
+                y = 5 + Math.random() * 10; // Trunk
+            }
+            ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
         }
-        ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
-    }
+        attempts++;
+    } while (ff.obj && ff.target.distanceTo(currentPos) < 15 && attempts < 3); // Enforce min travel distance
 
     ff.state = 'FLYING';
 }
