@@ -854,21 +854,36 @@ export function updateFireflyWings(ff: FireflyState, time: number, isFlying: boo
 }
 
 export function setRandomFlightTarget(ff: { target: THREE.Vector3, state: string }) {
-    // Keep fireflies close to tree - radius 3-12 units (was 15-45)
-    const r = 3 + Math.random() * 9;
-    const theta = Math.random() * Math.PI * 2;
+    const rand = Math.random();
     
-    // Most fireflies stay in canopy area (y: 15-45), some near trunk (y: 5-15)
-    let y;
-    if (Math.random() > 0.3) {
-        // 70% in canopy area
-        y = 15 + Math.random() * 30;
+    if (rand < 0.2) {
+        // ZONE 1: NEAR CAMERA (High Radius)
+        // Camera is approx at z=100, so we target r=60-90 to fly near it
+        const r = 60 + Math.random() * 30;
+        // Limit angle to front semicircle (-PI/2 to PI/2) so they are actually near camera
+        const theta = (Math.random() - 0.5) * Math.PI; 
+        const y = 10 + Math.random() * 30;
+        ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
+    } else if (rand < 0.4) {
+        // ZONE 2: ABOVE TREE (High Altitude)
+        const r = Math.random() * 20;
+        const theta = Math.random() * Math.PI * 2;
+        const y = 50 + Math.random() * 30; // 50 to 80 units high
+        ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
     } else {
-        // 30% near trunk/lower
-        y = 5 + Math.random() * 10;
+        // ZONE 3: STANDARD TREE AREA (Canopy & Trunk)
+        const r = 3 + Math.random() * 12; // Slightly widened to 15
+        const theta = Math.random() * Math.PI * 2;
+        
+        let y;
+        if (Math.random() > 0.3) {
+            y = 15 + Math.random() * 30; // Canopy
+        } else {
+            y = 5 + Math.random() * 10; // Trunk
+        }
+        ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
     }
 
-    ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
     ff.state = 'FLYING';
 }
 

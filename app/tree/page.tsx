@@ -57,6 +57,7 @@ function TreePageInner() {
         let treeGroup: THREE.Group;
         let treeMaterials: THREE.MeshStandardMaterial[] = [];
         let materialsCollected = false;
+        const treeCenter = new THREE.Vector3(0, 25, 0); // Approximate tree center for boundary checks
 
         let width = containerRef.current.clientWidth;
         let height = containerRef.current.clientHeight;
@@ -189,7 +190,7 @@ function TreePageInner() {
 
                 // 2. Max distance check - prevent flying off into void
                 const distToCenter = pos.distanceTo(treeCenter);
-                if (distToCenter > 60) {
+                if (distToCenter > 100) { // Increased from 60 to allow near-camera flights
                     // Pull back to tree
                     const pullDir = new THREE.Vector3().subVectors(treeCenter, pos).normalize();
                     pos.add(pullDir.multiplyScalar(ff.speed * delta * 2)); // Strong pull
