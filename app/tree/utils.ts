@@ -273,101 +273,83 @@ export function createCarpFish(scene: THREE.Scene): THREE.Group {
     const fishGroup = new THREE.Group();
     fishGroup.name = 'carpFish';
     
-    const fishColors = [
-        new THREE.Color(COLORS.CARP_ORANGE),
-        new THREE.Color(COLORS.CARP_WHITE),
-        new THREE.Color(COLORS.CARP_GOLD),
-        new THREE.Color(COLORS.CARP_RED)
-    ];
+    const loader = new GLTFLoader();
     
-    const fishCount = 8;
-    
-    for (let i = 0; i < fishCount; i++) {
-        const fish = new THREE.Group();
-        fish.name = `fish_${i}`;
-        
-        // Fish body - elongated ellipsoid
-        const bodyGeo = new THREE.SphereGeometry(1, 16, 12);
-        bodyGeo.scale(1.8, 0.6, 0.5);
-        const color = fishColors[i % fishColors.length];
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: color,
-            emissive: color,
-            emissiveIntensity: 0.6, // Increased brightness
-            roughness: 0.3,
-            metalness: 0.1
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        fish.add(body);
-        
-        // Fish tail
-        const tailShape = new THREE.Shape();
-        tailShape.moveTo(0, 0);
-        tailShape.quadraticCurveTo(0.8, 0.5, 0.6, 1);
-        tailShape.lineTo(0, 0.5);
-        tailShape.lineTo(-0.6, 1);
-        tailShape.quadraticCurveTo(-0.8, 0.5, 0, 0);
-        const tailGeo = new THREE.ShapeGeometry(tailShape);
-        const tailMat = new THREE.MeshStandardMaterial({
-            color: color,
-            emissive: color,
-            emissiveIntensity: 0.5, // Increased brightness
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.9
-        });
-        const tail = new THREE.Mesh(tailGeo, tailMat);
-        tail.position.set(-1.8, 0, 0);
-        tail.rotation.y = Math.PI / 2;
-        tail.scale.set(0.8, 0.8, 1);
-        fish.add(tail);
-        
-        // Dorsal fin
-        const dorsalShape = new THREE.Shape();
-        dorsalShape.moveTo(0, 0);
-        dorsalShape.quadraticCurveTo(0.3, 0.4, 0.6, 0);
-        dorsalShape.lineTo(0, 0);
-        const dorsalGeo = new THREE.ShapeGeometry(dorsalShape);
-        const dorsal = new THREE.Mesh(dorsalGeo, tailMat);
-        dorsal.position.set(0.2, 0.5, 0);
-        dorsal.rotation.x = Math.PI / 2;
-        dorsal.scale.set(1.2, 1, 1);
-        fish.add(dorsal);
-        
-        // Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeL.position.set(1.4, 0.15, 0.3);
-        fish.add(eyeL);
-        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-        eyeR.position.set(1.4, 0.15, -0.3);
-        fish.add(eyeR);
-        
-        // Random position under water
-        const angle = (i / fishCount) * Math.PI * 2 + Math.random() * 0.5;
-        const radius = 25 + Math.random() * 40;
-        fish.position.set(
-            Math.cos(angle) * radius,
-            -3 - Math.random() * 4, // Under water surface
-            Math.sin(angle) * radius
-        );
-        
-        // Random scale
-        const scale = 0.8 + Math.random() * 0.6;
-        fish.scale.set(scale, scale, scale);
-        
-        // Store swimming data
-        fish.userData = {
-            angle: angle,
-            radius: radius,
-            speed: 0.15 + Math.random() * 0.1,
-            yOffset: fish.position.y,
-            phase: Math.random() * Math.PI * 2
-        };
-        
-        fishGroup.add(fish);
-    }
+    loader.load(
+        '/assets/koi+fish+3d+model.glb',
+        (gltf) => {
+            const model = gltf.scene;
+            
+            const fishColors = [
+                new THREE.Color(COLORS.CARP_ORANGE),
+                new THREE.Color(COLORS.CARP_WHITE),
+                new THREE.Color(COLORS.CARP_GOLD),
+                new THREE.Color(COLORS.CARP_RED)
+            ];
+            
+            const fishCount = 8;
+            
+            for (let i = 0; i < fishCount; i++) {
+                const fish = model.clone();
+                fish.name = `fish_${i}`;
+                
+                // Color variation and material enhancement
+                const color = fishColors[i % fishColors.length];
+                fish.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        // Clone material to ensure unique instances for coloring
+                        const oldMat = Array.isArray(child.material) ? child.material[0] : child.material;
+                        const mat = oldMat.clone();
+                        child.material = mat;
+                        
+                        if (mat instanceof THREE.MeshStandardMaterial) {
+                            mat.color.copy(color);
+                            mat.emissive = color;
+                            mat.emissiveIntensity = 0.4;
+                            mat.roughness = 0.4;
+                            mat.metalness = 0.3;
+                            mat.transparent = true;
+                            mat.opacity = 0.95;
+                        }
+                    }
+                });
+                
+                // Random position under water - CLOSER to tree (radius 10-30)
+                const angle = (i / fishCount) * Math.PI * 2 + Math.random() * 0.5;
+                const radius = 10 + Math.random() * 20; // Reduced from 25-65 to 10-30
+                fish.position.set(
+                    Math.cos(angle) * radius,
+                    -2 - Math.random() * 3, // Under water surface
+                    Math.sin(angle) * radius
+                );
+                
+                // Scale adjustments for the GLB model
+                const scale = 5 + Math.random() * 3; 
+                fish.scale.set(scale, scale, scale);
+                
+                // Store swimming data with SLOWER speed and stagnant state
+                fish.userData = {
+                    angle: angle,
+                    radius: radius,
+                    speed: 0.03 + Math.random() * 0.03, // Much slower (was 0.15-0.25)
+                    yOffset: fish.position.y,
+                    phase: Math.random() * Math.PI * 2,
+                    wiggleSpeed: 2 + Math.random() * 2, // Slower wiggle (was 5-10)
+                    // Stagnant state
+                    isStagnant: false,
+                    stagnantTimer: 0,
+                    stagnantDuration: 0,
+                    nextStagnantCheck: Math.random() * 5 // Random time until first stagnant check
+                };
+                
+                fishGroup.add(fish);
+            }
+        },
+        undefined,
+        (error) => {
+            console.error('Error loading koi fish model:', error);
+        }
+    );
     
     scene.add(fishGroup);
     return fishGroup;
@@ -375,28 +357,59 @@ export function createCarpFish(scene: THREE.Scene): THREE.Group {
 
 // Update fish swimming animation
 export function updateCarpFish(fishGroup: THREE.Group, time: number) {
+    const delta = 0.016; // Approximate delta time (~60fps)
+    
     fishGroup.children.forEach((fish) => {
         const data = fish.userData;
         
-        // Circular swimming path
+        // Skip if userData is not fully initialized (e.g. while loading)
+        if (!data || data.angle === undefined) return;
+        
+        // Handle stagnant state
+        if (data.isStagnant) {
+            data.stagnantTimer += delta;
+            if (data.stagnantTimer >= data.stagnantDuration) {
+                // Resume swimming
+                data.isStagnant = false;
+                data.stagnantTimer = 0;
+                data.nextStagnantCheck = 3 + Math.random() * 7; // 3-10 seconds until next possible pause
+            }
+            // While stagnant, only do gentle bobbing, no forward movement
+            fish.position.y = data.yOffset + Math.sin(time * 0.3 + data.phase) * 0.2;
+            return;
+        }
+        
+        // Check if fish should become stagnant
+        data.nextStagnantCheck -= delta;
+        if (data.nextStagnantCheck <= 0) {
+            // 40% chance to pause
+            if (Math.random() < 0.4) {
+                data.isStagnant = true;
+                data.stagnantTimer = 0;
+                data.stagnantDuration = 2 + Math.random() * 4; // Pause for 2-6 seconds
+                return;
+            }
+            data.nextStagnantCheck = 3 + Math.random() * 7;
+        }
+        
+        // Circular swimming path - SLOWER movement
         data.angle += data.speed * 0.01;
         fish.position.x = Math.cos(data.angle) * data.radius;
         fish.position.z = Math.sin(data.angle) * data.radius;
         
         // Gentle up/down bobbing
-        fish.position.y = data.yOffset + Math.sin(time * 0.5 + data.phase) * 0.5;
+        fish.position.y = data.yOffset + Math.sin(time * 0.5 + data.phase) * 0.3;
         
-        // Face swimming direction
-        fish.rotation.y = -data.angle + Math.PI / 2;
+        // Face swimming direction (tangent to circular path)
+        // Fish swims counter-clockwise, tangent is perpendicular to radius
+        // Offset by -PI/2 to align model's forward direction with movement
+        fish.rotation.y = -data.angle - Math.PI / 2; 
         
-        // Subtle body sway
-        fish.rotation.z = Math.sin(time * 2 + data.phase) * 0.05;
+        // Subtle body roll/sway (reduced for more natural look)
+        fish.rotation.z = Math.sin(time * 1.5 + data.phase) * 0.05;
         
-        // Animate tail
-        const tail = fish.children[1];
-        if (tail) {
-            tail.rotation.z = Math.sin(time * 4 + data.phase) * 0.3;
-        }
+        // Very gentle wiggle effect (yaw) - thunniform swimming style
+        fish.rotation.y += Math.sin(time * data.wiggleSpeed) * 0.03;
     });
 }
 
