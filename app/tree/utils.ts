@@ -672,7 +672,7 @@ export function createBoat(scene: THREE.Scene) {
     scene.add(boatGroup);
 }
 
-// Create hillocks around the pond with Chinese pagodas
+// Create hillocks around the pond with Chinese pagodas and internal lighting
 export function createHillocksAndPagoda(scene: THREE.Scene) {
     const hillockGroup = new THREE.Group();
     hillockGroup.name = 'hillocks';
@@ -687,24 +687,23 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
     });
 
     // Define hillock positions around the pond
+    // Keeping only the southwest pagoda - most visible from camera (0,20,100)
     const hillockData = [
-        { x: -80, z: -60, radius: 30, height: 10, pagodaScale: 15 },
-        { x: 75, z: -55, radius: 25, height: 8, pagodaScale: 12 },
-        { x: -70, z: 65, radius: 28, height: 9, pagodaScale: 13 },
-        { x: 80, z: 60, radius: 22, height: 7, pagodaScale: 10 },
+        { x: -70, z: 65, radius: 28, height: 9, pagodaScale: 26 },
     ];
 
     const loader = new GLTFLoader();
+    const flareMat = createGlareMaterial(); // Reuse existing glare logic
 
     hillockData.forEach((data, index) => {
-        // Create hillock using half-sphere for gentle shape
+        // 1. Create the hillock
         const hillGeo = new THREE.SphereGeometry(data.radius, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
         const hill = new THREE.Mesh(hillGeo, grassMat);
         hill.position.set(data.x, 0, data.z);
         hill.scale.set(1.2, data.height / data.radius, 1.0);
         hillockGroup.add(hill);
 
-        // Add terrain bumps around hillock
+        // Add terrain bumps for detail
         for (let i = 0; i < 5; i++) {
             const bumpRadius = 5 + Math.random() * 8;
             const bumpGeo = new THREE.SphereGeometry(bumpRadius, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -720,20 +719,18 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
             hillockGroup.add(bump);
         }
 
-        // Load pagoda for this hillock
         const hillTopY = data.height * 0.8;
 
+        // 2. Load and Light the Pagoda
         loader.load(
             '/assets/pagoda+3d+model.glb',
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
-
-                // Position on hillock summit
                 pagodaModel.position.set(data.x, hillTopY, data.z);
                 pagodaModel.scale.set(data.pagodaScale, data.pagodaScale, data.pagodaScale);
 
-                // Enhance materials for moonlight visibility
+                // Make the pagoda glow from within
                 pagodaModel.traverse((child) => {
                     if (child instanceof THREE.Mesh) {
                         const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -749,30 +746,37 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
                 hillockGroup.add(pagodaModel);
 
-                // Add lighting for this pagoda
-                const pagodaY = hillTopY + 15;
+                // 3. Add just 3 strategic lights - 2x brighter with reduced range for performance
+                // Center light - main illumination (2x intensity, shorter range)
+                const centerLight = new THREE.PointLight(0xffaa44, 4000, 80);
+                centerLight.position.set(data.x, hillTopY + 15, data.z);
+                hillockGroup.add(centerLight);
+                
+                // Two side lights for depth (2x intensity, shorter range)
+                const sideLight1 = new THREE.PointLight(0xffaa44, 2500, 60);
+                sideLight1.position.set(data.x + 15, hillTopY + 5, data.z);
+                hillockGroup.add(sideLight1);
+                
+                const sideLight2 = new THREE.PointLight(0xffaa44, 2500, 60);
+                sideLight2.position.set(data.x - 15, hillTopY + 5, data.z);
+                hillockGroup.add(sideLight2);
 
-                // Moonlight from above
-                const moonSpot = new THREE.SpotLight(0xffffcc, 10, 150, Math.PI / 3, 0.4);
-                moonSpot.position.set(data.x, pagodaY + 60, data.z);
-                moonSpot.target.position.set(data.x, pagodaY, data.z);
+                // 4. Add "Haze" Sprite (Fake Volumetric Glow)
+                const glowSprite = new THREE.Sprite(flareMat.clone());
+                glowSprite.position.set(data.x, hillTopY + 12, data.z);
+                glowSprite.scale.set(25, 25, 1);
+                glowSprite.material.color.setHex(0xff6600);
+                glowSprite.material.opacity = 0.4;
+                hillockGroup.add(glowSprite);
+
+                // 5. Add a dedicated SpotLight to highlight the pagoda's silhouette
+                const moonSpot = new THREE.SpotLight(0xffffcc, 15, 150, Math.PI / 4, 0.3);
+                moonSpot.position.set(data.x, hillTopY + 80, data.z);
+                moonSpot.target = pagodaModel;
                 hillockGroup.add(moonSpot);
-                hillockGroup.add(moonSpot.target);
-
-                // Ambient glow around pagoda
-                const ambientGlow = new THREE.PointLight(0xffffee, 5, 80);
-                ambientGlow.position.set(data.x, pagodaY + 10, data.z);
-                hillockGroup.add(ambientGlow);
-
-                // Front fill light
-                const fillLight = new THREE.PointLight(0xffffff, 4, 60);
-                fillLight.position.set(data.x + 20, pagodaY, data.z + 20);
-                hillockGroup.add(fillLight);
             },
             undefined,
-            (error) => {
-                console.error(`Error loading pagoda ${index}:`, error);
-            }
+            (error) => console.error(`Error loading pagoda ${index}:`, error)
         );
     });
 
