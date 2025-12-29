@@ -81,7 +81,7 @@ function TreePageInner() {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.outputColorSpace = THREE.SRGBColorSpace; // Fix for GLB color rendering
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
+        renderer.toneMappingExposure = 1.5; // Increased for brighter scene
 
         // Post-processing (Avatar-like glow)
         composer = new EffectComposer(renderer);
