@@ -244,10 +244,19 @@ function dataUrlToBuffer(dataUrl: string): Buffer {
  */
 export async function processImageWithAphorism(
   rawImageDataUrl: string,
-  backgroundUrl?: string
+  backgroundUrl?: string,
+  skipBackground?: boolean
 ): Promise<ProcessedImageResult> {
   const aphorism = getRandomAphorism();
   const aphorismDisplay = `${aphorism.chinese} / ${aphorism.english}`;
+
+  if(skipBackground) {
+    const finalImageUrl = saveProcessedImage(dataUrlToBuffer(rawImageDataUrl));
+    return {
+      finalImageUrl: finalImageUrl,
+      aphorism: aphorismDisplay
+    };
+  }
 
   try {
     // Convert data URL to buffer

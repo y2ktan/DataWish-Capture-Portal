@@ -38,6 +38,7 @@ export default function RegisterPage() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [skipBackground, setSkipBackground] = useState(false);
 
   // Camera control refs (using refs to avoid re-renders)
   const zoomRef = useRef(1);
@@ -474,7 +475,7 @@ export default function RegisterPage() {
     try {
       const res = await fetch("/api/moments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "skip-background": skipBackground.toString() },
         body: JSON.stringify({
           englishName: englishName.trim(),
           chineseName: chineseName.trim() || undefined,
@@ -716,23 +717,50 @@ export default function RegisterPage() {
               className={`h-full w-full ${isLandscape() ? "object-contain" : "object-cover"}`}
             />
           </div>
-          <div className="mt-2 flex justify-between gap-2">
-            <button
-              type="button"
-              onClick={handleRecapture}
-              className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105"
-              style={{ border: '1px solid rgba(0,163,224,0.5)', color: '#00A3E0', backgroundColor: 'rgba(0,163,224,0.1)' }}
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleRecapture}
+                className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105"
+                style={{ border: '1px solid rgba(0,163,224,0.5)', color: '#00A3E0', backgroundColor: 'rgba(0,163,224,0.1)' }}
+              >
+                Recapture
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.4)' }}
+              >
+                Confirm &amp; Generate
+              </button>
+            </div>
+            <div 
+              className="flex items-center justify-between rounded-lg p-3 transition-all" 
+              style={{ 
+                backgroundColor: 'rgba(0,163,224,0.05)', 
+                border: '1px solid rgba(0,163,224,0.2)' 
+              }}
             >
-              Recapture
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #0066B3, #00A3E0)', boxShadow: '0 0 20px rgba(0,163,224,0.4)' }}
-            >
-              Confirm &amp; Generate
-            </button>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium" style={{ color: '#fff' }}>Skip background effects</span>
+                <span className="text-[10px]" style={{ color: 'rgba(109,213,237,0.6)' }}>Keep the original background as seen above</span>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setSkipBackground(!skipBackground)}
+                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none"
+                style={{ backgroundColor: skipBackground ? '#00A3E0' : 'rgba(255,255,255,0.2)' }}
+              >
+                <span
+                  className={`${
+                    skipBackground ? 'translate-x-6' : 'translate-x-1'
+                  } inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out`}
+                />
+              </button>
+            </div>
           </div>
         </section>
       )}

@@ -34,6 +34,7 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(req: NextRequest) {
   try {
     const forwarded = req.headers.get("x-forwarded-for");
+    const skipBackground = req.headers.get("skip-background") === "true";
     const ip = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") ?? "unknown";
     
     if (!checkRateLimit(ip)) {
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const processed = await processImageWithAphorism(imageDataUrl);
+    const processed = await processImageWithAphorism(imageDataUrl, undefined, skipBackground);
 
     const downloadToken = crypto.randomBytes(16).toString("hex");
 
