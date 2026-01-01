@@ -176,8 +176,8 @@ export class Moment {
 
   static getAllRegisteredNames(): string[] {
     const db = getDatabase();
-    const stmt = db.prepare("SELECT englishName FROM moments ORDER BY createdAt DESC");
-    const rows = stmt.all() as { englishName: string }[];
-    return rows.map(r => r.englishName);
+    const stmt = db.prepare("SELECT englishName, chineseName FROM moments ORDER BY createdAt DESC");
+    const rows = stmt.all() as { englishName: string; chineseName: string | null }[];
+    return rows.map(r => r.chineseName || r.englishName);
   }
 }

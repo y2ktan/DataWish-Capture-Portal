@@ -88,16 +88,16 @@ export class Section {
     return stmt.all(sectionId) as SectionCheckinRow[];
   }
 
-  static getReleasedFirefliesBySection(sectionId: number): { englishName: string; momentId: number }[] {
+  static getReleasedFirefliesBySection(sectionId: number): { displayName: string; momentId: number }[] {
     const db = getDatabase();
     const stmt = db.prepare(`
-      SELECT m.englishName, m.id as momentId
+      SELECT COALESCE(m.chineseName, m.englishName) as displayName, m.id as momentId
       FROM section_checkins sc
       JOIN moments m ON sc.momentId = m.id
       WHERE sc.sectionId = ? AND sc.isFireflyRelease = 1
       ORDER BY sc.checkedInAt DESC
     `);
-    return stmt.all(sectionId) as { englishName: string; momentId: number }[];
+    return stmt.all(sectionId) as { displayName: string; momentId: number }[];
   }
 
   static getCheckinsByMoment(momentId: number): { id: number; sectionId: number; sectionName: string; isFireflyRelease: number }[] {

@@ -124,8 +124,8 @@ export async function POST(req: NextRequest) {
       isCheckedIn
     });
 
-    // Broadcast new firefly to all global SSE connections
-    broadcastNewFirefly(englishName);
+    // Broadcast new firefly to all global SSE connections (use Chinese name if available)
+    broadcastNewFirefly(chineseName || englishName);
 
     return NextResponse.json(
       {
@@ -161,13 +161,13 @@ export async function GET(req: NextRequest) {
       }
       
       const fireflies = Section.getReleasedFirefliesBySection(sectionIdNum);
-      const names = fireflies.map(f => f.englishName).filter(Boolean);
+      const names = fireflies.map(f => f.displayName).filter(Boolean);
       return NextResponse.json({ names });
     }
     
     // Default behavior: return all moments (backward compatible)
     const moments = Moment.findMany(); // Gets latest 50
-    const names = moments.map(m => m.englishName).filter(Boolean);
+    const names = moments.map(m => m.chineseName || m.englishName).filter(Boolean);
 
     // De-duplicate names if needed, though seeing multiple "Ray"s might be cool.
     // Let's keep them as is for now.

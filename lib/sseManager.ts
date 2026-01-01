@@ -48,7 +48,7 @@ function broadcastChanges() {
 
     try {
       const currentFireflies = Section.getReleasedFirefliesBySection(sectionId);
-      const currentNames = new Set(currentFireflies.map(f => f.englishName));
+      const currentNames = new Set(currentFireflies.map(f => f.displayName));
       const previousNames = sectionFireflies.get(sectionId) || new Set();
 
       // Find added fireflies
@@ -161,7 +161,7 @@ export function registerConnection(sectionId: number, controller: ReadableStream
   // Initialize firefly cache for this section if not exists
   if (!sectionFireflies.has(sectionId)) {
     const fireflies = Section.getReleasedFirefliesBySection(sectionId);
-    sectionFireflies.set(sectionId, new Set(fireflies.map(f => f.englishName)));
+    sectionFireflies.set(sectionId, new Set(fireflies.map(f => f.displayName)));
   }
 
   console.log(`[SSE] New connection for section ${sectionId}. Total: ${sectionConnections.get(sectionId)!.size}`);
@@ -179,7 +179,7 @@ export function unregisterConnection(sectionId: number, controller: ReadableStre
 // Get initial fireflies for a section
 export function getInitialFireflies(sectionId: number): string[] {
   const fireflies = Section.getReleasedFirefliesBySection(sectionId);
-  const names = fireflies.map(f => f.englishName);
+  const names = fireflies.map(f => f.displayName);
   
   // Update cache
   sectionFireflies.set(sectionId, new Set(names));
