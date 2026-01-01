@@ -164,7 +164,7 @@ async function createTextOverlay(aphorism: BilingualAphorism): Promise<Buffer> {
 async function compositeImage(
   subjectBuffer: Buffer,
   backgroundPath: string,
-  aphorism: BilingualAphorism
+  aphorism?: BilingualAphorism
 ): Promise<Buffer> {
   const sharp = await getSharp();
 
@@ -184,22 +184,34 @@ async function compositeImage(
     .toBuffer();
 
   // 3. Create text overlay with custom fonts
-  const textOverlay = await createTextOverlay(aphorism);
+  if(aphorism) {
+    const textOverlay = await createTextOverlay(aphorism);
 
-  // 4. Composite Layers
-  return await background
-    .composite([
-      { 
-        input: subjectResized, 
-        gravity: "south" // Keep person at the bottom of the composite
-      },
-      { 
-        input: textOverlay, 
-        gravity: "northwest" 
-      }
-    ])
-    .jpeg({ quality: 90 })
-    .toBuffer();
+    // 4. Composite Layers
+    return await background
+      .composite([
+        { 
+          input: subjectResized, 
+          gravity: "south" // Keep person at the bottom of the composite
+        },
+        { 
+          input: textOverlay, 
+          gravity: "northwest" 
+        }
+      ])
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  } else {
+    return await background
+      .composite([
+        { 
+          input: subjectResized, 
+          gravity: "south" // Keep person at the bottom of the composite
+        }
+      ])
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  }
 }
 
 /**
@@ -261,10 +273,10 @@ export async function processImageWithAphorism(
     if (bgPath) {
       console.log("Processing with background replacement...");
       const subjectBuffer = await removeBackground(imageBuffer);
-      finalBuffer = await compositeImage(subjectBuffer, bgPath, aphorism);
+      finalBuffer = await compositeImage(subjectBuffer, bgPath);
     } else {
       console.log("Processing original image with text overlay...");
-      finalBuffer = await applyTextOverlayOnly(imageBuffer, aphorism);
+      finalBuffer = await applyTextOverlayOnly(imageBuffer);
     }
 
     return {
@@ -289,15 +301,21 @@ function resolveBackgroundPath(backgroundUrl?: string): string | null {
   return targetUrl ? getBackgroundPath(targetUrl) : null;
 }
 
-async function applyTextOverlayOnly(imageBuffer: Buffer, aphorism: any): Promise<Buffer> {
+async function applyTextOverlayOnly(imageBuffer: Buffer, aphorism?: any): Promise<Buffer> {
   const sharp = await getSharp();
-  const textOverlay = await createTextOverlay(aphorism);
-
-  return sharp(imageBuffer)
-    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: "cover", position: "center" })
-    .composite([{ input: textOverlay, gravity: "northwest" }])
-    .jpeg({ quality: 90 })
-    .toBuffer();
+  if(aphorism) {
+    const textOverlay = await createTextOverlay(aphorism);
+    return sharp(imageBuffer)
+      .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: "cover", position: "center" })
+      .composite([{ input: textOverlay, gravity: "northwest" }])
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  } else {
+    return sharp(imageBuffer)
+      .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: "cover", position: "center" })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  }
 }
 
 function saveRawFallback(buffer: Buffer): string {
