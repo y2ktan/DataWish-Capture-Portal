@@ -104,7 +104,7 @@ export function getDatabase(): Database.Database {
     const defaultAphorisms = [
       { chinese: "发脾气是短暂的发疯", english: "Giving vent to anger is temporary insanity" },
       { chinese: "施比受更有福", english: "To give is better than to receive" },
-      { chinese: "甘願做，歡喜受", english: "Be willing to do, be happy to bear" },
+      { chinese: "甘愿做，欢喜受", english: "Be willing to do, be happy to bear" },
       { chinese: '人都是求"有"，什么叫"有"呢？"有"就是烦恼', english: 'Everyone seeks "to have". What is "to have"? It is to have worries' },
       { chinese: "君子如水，随方就圆，无处不自在", english: "A gentleman is like water, which takes the shape of the container into which it flows. He is comfortable in any situation" }
     ];

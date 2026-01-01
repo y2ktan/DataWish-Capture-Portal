@@ -249,109 +249,60 @@ export async function processImageWithAphorism(
 ): Promise<ProcessedImageResult> {
   const aphorism = getRandomAphorism();
   const aphorismDisplay = `${aphorism.chinese} / ${aphorism.english}`;
-
-  if(skipBackground) {
-      const sharp = await getSharp();
-      const textOverlay = await createTextOverlay(aphorism);
-      const imgBuffer = dataUrlToBuffer(rawImageDataUrl)
-      const resizedImage = await sharp(imgBuffer)
-        .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
-          fit: "cover",
-          position: "center"
-        })
-        .toBuffer();
-        
-      const result = await sharp(resizedImage)
-        .composite([
-          {
-            input: textOverlay,
-            gravity: "northwest"
-          }
-        ])
-        .jpeg({ quality: 90 })
-        .toBuffer();
-    const finalImageUrl = saveProcessedImage(result);
-    return {
-      finalImageUrl: finalImageUrl,
-      aphorism: aphorismDisplay
-    };
-  }
+  const imageBuffer = dataUrlToBuffer(rawImageDataUrl);
 
   try {
-    // Convert data URL to buffer
-    const imageBuffer = dataUrlToBuffer(rawImageDataUrl);
+    // 1. Determine if we can/should use a background
+    const bgPath = !skipBackground ? resolveBackgroundPath(backgroundUrl) : null;
 
-    // Get background path
-    let bgPath: string | null = null;
-    
-    if (backgroundUrl) {
-      bgPath = getBackgroundPath(backgroundUrl);
-    }
-    
-    if (!bgPath) {
-      // Try to get a random background
-      const randomBgUrl = getRandomBackground();
-      if (randomBgUrl) {
-        bgPath = getBackgroundPath(randomBgUrl);
-      }
+    // 2. Execute processing pipeline
+    let finalBuffer: Buffer;
+
+    if (bgPath) {
+      console.log("Processing with background replacement...");
+      const subjectBuffer = await removeBackground(imageBuffer);
+      finalBuffer = await compositeImage(subjectBuffer, bgPath, aphorism);
+    } else {
+      console.log("Processing original image with text overlay...");
+      finalBuffer = await applyTextOverlayOnly(imageBuffer, aphorism);
     }
 
-    // If no background available, skip background replacement and just save raw image with text overlay
-    if (!bgPath) {
-      console.log("No background available, skipping background replacement - saving raw image with text overlay");
-      
-      const sharp = await getSharp();
-      
-      // Just add text overlay to the original image
-      const resizedImage = await sharp(imageBuffer)
-        .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
-          fit: "cover",
-          position: "center"
-        })
-        .toBuffer();
-
-      // Create text overlay with custom fonts
-      const textOverlay = await createTextOverlay(aphorism);
-
-      const result = await sharp(resizedImage)
-        .composite([
-          {
-            input: textOverlay,
-            gravity: "northwest"
-          }
-        ])
-        .jpeg({ quality: 90 })
-        .toBuffer();
-
-      const finalImageUrl = saveProcessedImage(result);
-      return { finalImageUrl, aphorism: aphorismDisplay };
-    }
-
-    // Full processing pipeline with background replacement
-    console.log("Processing image with background replacement...");
-
-    // Step 1: Remove background from user photo
-    const subjectBuffer = await removeBackground(imageBuffer);
-
-    // Step 2 & 3: Composite onto background and add text
-    const processedBuffer = await compositeImage(subjectBuffer, bgPath, aphorism);
-
-    // Step 4: Save final image
-    const finalImageUrl = saveProcessedImage(processedBuffer);
-
-    return { finalImageUrl, aphorism: aphorismDisplay };
-  } catch (error) {
-    console.error("Image processing failed:", error);
-    
-    // Fallback: save raw image without processing
-    const filename = `raw-${crypto.randomBytes(16).toString("hex")}.jpg`;
-    const filePath = path.join(UPLOADS_DIR, filename);
-    const buffer = dataUrlToBuffer(rawImageDataUrl);
-    fs.writeFileSync(filePath, buffer);
-    
     return {
-      finalImageUrl: `/uploads/${filename}`,
-      aphorism: aphorismDisplay
+      finalImageUrl: saveProcessedImage(finalBuffer),
+      aphorism: aphorismDisplay,
+    };
+
+  } catch (error) {
+    console.error("Image processing failed, falling back to raw save:", error);
+    return {
+      finalImageUrl: saveRawFallback(imageBuffer),
+      aphorism: aphorismDisplay,
     };
   }
+}
+
+/** * HELPER FUNCTIONS to keep the main logic clean
+ */
+
+function resolveBackgroundPath(backgroundUrl?: string): string | null {
+  const targetUrl = backgroundUrl || getRandomBackground();
+  return targetUrl ? getBackgroundPath(targetUrl) : null;
+}
+
+async function applyTextOverlayOnly(imageBuffer: Buffer, aphorism: any): Promise<Buffer> {
+  const sharp = await getSharp();
+  const textOverlay = await createTextOverlay(aphorism);
+
+  return sharp(imageBuffer)
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: "cover", position: "center" })
+    .composite([{ input: textOverlay, gravity: "northwest" }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+function saveRawFallback(buffer: Buffer): string {
+  const filename = `raw-${crypto.randomBytes(16).toString("hex")}.jpg`;
+  const filePath = path.join(UPLOADS_DIR, filename);
+  fs.writeFileSync(filePath, buffer);
+  return `/uploads/${filename}`;
 }
