@@ -251,7 +251,26 @@ export async function processImageWithAphorism(
   const aphorismDisplay = `${aphorism.chinese} / ${aphorism.english}`;
 
   if(skipBackground) {
-    const finalImageUrl = saveProcessedImage(dataUrlToBuffer(rawImageDataUrl));
+      const sharp = await getSharp();
+      const textOverlay = await createTextOverlay(aphorism);
+      const imgBuffer = dataUrlToBuffer(rawImageDataUrl)
+      const resizedImage = await sharp(imgBuffer)
+        .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+          fit: "cover",
+          position: "center"
+        })
+        .toBuffer();
+        
+      const result = await sharp(resizedImage)
+        .composite([
+          {
+            input: textOverlay,
+            gravity: "northwest"
+          }
+        ])
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    const finalImageUrl = saveProcessedImage(result);
     return {
       finalImageUrl: finalImageUrl,
       aphorism: aphorismDisplay
