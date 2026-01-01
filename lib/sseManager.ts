@@ -1,10 +1,15 @@
 import * as chokidar from "chokidar";
 import path from "path";
 import { Section } from "@/models/Section";
+import { Moment } from "@/models/Moment";
 
 // Store active SSE connections per section
 const sectionConnections = new Map<number, Set<ReadableStreamDefaultController>>();
 const sectionFireflies = new Map<number, Set<string>>();
+
+// Store global SSE connections (no section filtering)
+const globalConnections = new Set<ReadableStreamDefaultController>();
+let globalFireflies = new Set<string>();
 
 let watcher: ReturnType<typeof chokidar.watch> | null = null;
 let debounceTimer: NodeJS.Timeout | null = null;
@@ -37,6 +42,7 @@ export function initWatcher() {
 
 // Broadcast changes to all connected clients
 function broadcastChanges() {
+  // Broadcast to section-specific connections
   sectionConnections.forEach((controllers, sectionId) => {
     if (controllers.size === 0) return;
 
@@ -90,6 +96,57 @@ function broadcastChanges() {
       console.error(`[SSE] Error broadcasting to section ${sectionId}:`, err);
     }
   });
+
+  // Broadcast to global connections (all registered users)
+  if (globalConnections.size > 0) {
+    try {
+      const allNames = Moment.getAllRegisteredNames();
+      const currentNames = new Set(allNames);
+
+      // Find added fireflies
+      const added: string[] = [];
+      currentNames.forEach(name => {
+        if (!globalFireflies.has(name)) {
+          added.push(name);
+        }
+      });
+
+      // Find removed fireflies
+      const removed: string[] = [];
+      globalFireflies.forEach(name => {
+        if (!currentNames.has(name)) {
+          removed.push(name);
+        }
+      });
+
+      // Update cached state
+      globalFireflies = currentNames;
+
+      // Send events to all global controllers
+      globalConnections.forEach(controller => {
+        try {
+          if (added.length > 0) {
+            added.forEach(name => {
+              controller.enqueue(`event: add\ndata: ${JSON.stringify(name)}\n\n`);
+            });
+          }
+          if (removed.length > 0) {
+            removed.forEach(name => {
+              controller.enqueue(`event: remove\ndata: ${JSON.stringify(name)}\n\n`);
+            });
+          }
+        } catch (err) {
+          globalConnections.delete(controller);
+        }
+      });
+
+      if (added.length > 0 || removed.length > 0) {
+        console.log(`[SSE] Global: +${added.length} added, -${removed.length} removed`);
+      }
+    } catch (err) {
+      console.error(`[SSE] Error broadcasting to global connections:`, err);
+    }
+  }
 }
 
 // Register a new SSE connection for a section
@@ -128,4 +185,52 @@ export function getInitialFireflies(sectionId: number): string[] {
   sectionFireflies.set(sectionId, new Set(names));
   
   return names;
+}
+
+// Register a global SSE connection (all registered users)
+export function registerGlobalConnection(controller: ReadableStreamDefaultController) {
+  initWatcher();
+  globalConnections.add(controller);
+  
+  // Initialize global firefly cache with all registered users
+  const names = Moment.getAllRegisteredNames();
+  globalFireflies = new Set(names);
+  
+  console.log(`[SSE] New global connection. Total: ${globalConnections.size}`);
+}
+
+// Unregister a global SSE connection
+export function unregisterGlobalConnection(controller: ReadableStreamDefaultController) {
+  globalConnections.delete(controller);
+  console.log(`[SSE] Global connection closed. Remaining: ${globalConnections.size}`);
+}
+
+// Get initial fireflies for global view (all registered users)
+export function getInitialFirefliesAll(): string[] {
+  const names = Moment.getAllRegisteredNames();
+  
+  // Update cache
+  globalFireflies = new Set(names);
+  
+  return names;
+}
+
+// Directly broadcast a new firefly to global connections (call after Moment.create)
+export function broadcastNewFirefly(name: string) {
+  if (globalConnections.size === 0) return;
+  
+  // Check if already in cache to avoid duplicates
+  if (globalFireflies.has(name)) return;
+  
+  globalFireflies.add(name);
+  
+  globalConnections.forEach(controller => {
+    try {
+      controller.enqueue(`event: add\ndata: ${JSON.stringify(name)}\n\n`);
+    } catch (err) {
+      globalConnections.delete(controller);
+    }
+  });
+  
+  console.log(`[SSE] Broadcast new firefly: ${name}`);
 }

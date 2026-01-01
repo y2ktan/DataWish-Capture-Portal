@@ -424,22 +424,45 @@ function TreePageInner() {
                 console.error('[SSE] Connection error:', err);
             };
         } else {
-            // Fallback to polling if no section specified
-            const fetchFireflies = () => {
-                fetch('/api/moments')
-                    .then(res => res.json())
-                    .then(data => {
-                        const names = data.names || [];
-                        names.forEach((n: string) => {
-                            const alreadyExists = fireflies.some(ff => ff.label.textContent === n);
-                            if (n !== name && !alreadyExists) {
-                                spawnFirefly(n);
-                            }
-                        });
-                    })
-                    .catch(err => console.error("Failed to fetch fireflies:", err));
+            // Use global SSE endpoint for real-time updates (all sections)
+            eventSource = new EventSource(`/api/sse/fireflies/all`);
+            
+            eventSource.addEventListener('sync', (e) => {
+                try {
+                    const names = JSON.parse(e.data) as string[];
+                    syncFireflies(names);
+                    console.log(`[SSE Global] Synced ${names.length} fireflies`);
+                } catch (err) {
+                    console.error('[SSE Global] Failed to parse sync event:', err);
+                }
+            });
+            
+            eventSource.addEventListener('add', (e) => {
+                try {
+                    const addedName = JSON.parse(e.data) as string;
+                    const alreadyExists = fireflies.some(ff => ff.label.textContent === addedName);
+                    if (addedName !== name && !alreadyExists) {
+                        spawnFirefly(addedName);
+                        console.log(`[SSE Global] Added firefly: ${addedName}`);
+                    }
+                } catch (err) {
+                    console.error('[SSE Global] Failed to parse add event:', err);
+                }
+            });
+            
+            eventSource.addEventListener('remove', (e) => {
+                try {
+                    const removedName = JSON.parse(e.data) as string;
+                    removeFirefly(removedName);
+                    console.log(`[SSE Global] Removed firefly: ${removedName}`);
+                } catch (err) {
+                    console.error('[SSE Global] Failed to parse remove event:', err);
+                }
+            });
+            
+            eventSource.onerror = (err) => {
+                console.error('[SSE Global] Connection error:', err);
             };
-            fetchFireflies();
         }
 
         handleResize();

@@ -118,4 +118,16 @@ export class Section {
     const result = stmt.run(momentId, sectionId);
     return result.changes > 0;
   }
+
+  static getAllReleasedFireflies(): { englishName: string; momentId: number; sectionId: number }[] {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT m.englishName, m.id as momentId, sc.sectionId
+      FROM section_checkins sc
+      JOIN moments m ON sc.momentId = m.id
+      WHERE sc.isFireflyRelease = 1
+      ORDER BY sc.checkedInAt DESC
+    `);
+    return stmt.all() as { englishName: string; momentId: number; sectionId: number }[];
+  }
 }

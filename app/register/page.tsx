@@ -585,7 +585,7 @@ export default function RegisterPage() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
-                inputMode="tel"
+                inputMode="numeric"
                 placeholder="121234567"
               />
             </div>
