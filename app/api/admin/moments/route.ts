@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
         englishName: m.englishName,
         chineseName: m.chineseName,
         phoneNumber: m.phoneNumber,
+        postcode: m.postcode,
         email: m.email,
         createdAt: m.createdAt,
         downloadToken: m.downloadToken,
@@ -74,7 +75,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const { id, englishName, chineseName, phoneNumber, email } = body;
+    const { id, englishName, chineseName, phoneNumber, postcode, email } = body;
 
     if (!id || !englishName || !phoneNumber) {
       return NextResponse.json(
@@ -87,6 +88,7 @@ export async function PUT(req: NextRequest) {
       englishName,
       chineseName,
       phoneNumber,
+      postcode,
       email
     });
 

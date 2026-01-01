@@ -49,6 +49,13 @@ export function getDatabase(): Database.Database {
     // Column already exists, ignore
   }
 
+  // Add postcode column if it doesn't exist (for existing databases)
+  try {
+    db.exec(`ALTER TABLE moments ADD COLUMN postcode TEXT`);
+  } catch {
+    // Column already exists, ignore
+  }
+
   try {
     db.exec(`ALTER TABLE moments ADD COLUMN isFireflyRelease INTEGER NOT NULL DEFAULT 0`);
   } catch {
@@ -122,6 +129,7 @@ export interface MomentRow {
   englishName: string;
   chineseName: string | null;
   phoneNumber: string;
+  postcode: string | null;
   email: string | null;
   rawImageDataUrl: string;
   photoAssetUrl: string;

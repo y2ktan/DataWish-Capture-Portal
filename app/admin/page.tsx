@@ -15,6 +15,7 @@ interface AdminMomentRow {
   englishName: string;
   chineseName?: string;
   phoneNumber: string;
+  postcode?: string;
   email?: string;
   createdAt: string;
   downloadToken: string;
@@ -138,6 +139,7 @@ export default function AdminPage() {
           englishName: editing.englishName,
           chineseName: editing.chineseName,
           phoneNumber: editing.phoneNumber,
+          postcode: editing.postcode,
           email: editing.email
         })
       });
@@ -272,6 +274,9 @@ export default function AdminPage() {
                     {row.chineseName ? ` (${row.chineseName})` : ""}
                   </p>
                   <p className="text-xs text-slate-500">{row.phoneNumber}</p>
+                  {row.postcode && (
+                    <p className="text-xs text-slate-400">Postcode: {row.postcode}</p>
+                  )}
                   {/* Section chips */}
                   {row.sections && row.sections.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -360,11 +365,11 @@ export default function AdminPage() {
               />
               <input
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
-                value={editing.email ?? ""}
+                value={editing.postcode ?? ""}
                 onChange={(e) =>
-                  setEditing({ ...editing, email: e.target.value })
+                  setEditing({ ...editing, postcode: e.target.value })
                 }
-                placeholder="Email"
+                placeholder="Postcode"
               />
             </div>
             <div className="mt-4 flex justify-end gap-2">

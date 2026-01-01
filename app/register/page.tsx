@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [chineseName, setChineseName] = useState("");
   const [countryCode, setCountryCode] = useState("60");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [postcode, setPostcode] = useState("");
   const [email, setEmail] = useState("");
 
   // Country codes list
@@ -480,7 +481,7 @@ export default function RegisterPage() {
           englishName: englishName.trim(),
           chineseName: chineseName.trim() || undefined,
           phoneNumber: formatPhoneNumber(phoneNumber, countryCode),
-          email: email.trim() || undefined,
+          postcode: postcode.trim() || undefined,
           imageDataUrl: capturedDataUrl
         })
       });
@@ -590,13 +591,14 @@ export default function RegisterPage() {
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium" style={{ color: '#6DD5ED' }}>Email</label>
+            <label className="text-sm font-medium" style={{ color: '#6DD5ED' }}>Postcode</label>
             <input
               className="rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1" 
               style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)', color: '#fff' }}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              inputMode="email"
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              inputMode="numeric"
+              placeholder="11700"
             />
           </div>
 

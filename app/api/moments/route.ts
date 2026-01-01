@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
       englishName,
       chineseName,
       phoneNumber,
-      email,
+      postcode,
       imageDataUrl
     }: {
       englishName: string;
       chineseName?: string;
       phoneNumber: string;
-      email?: string;
+      postcode?: string;
       imageDataUrl: string;
     } = body;
 
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       englishName,
       chineseName,
       phoneNumber,
-      email,
+      postcode,
       rawImageDataUrl: rawImageUrl,
       photoAssetUrl: processed.finalImageUrl,
       qrCodeUrl,

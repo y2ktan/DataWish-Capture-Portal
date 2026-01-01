@@ -4,6 +4,7 @@ export interface MomentInput {
   englishName: string;
   chineseName?: string;
   phoneNumber: string;
+  postcode?: string;
   email?: string;
   rawImageDataUrl: string;
   photoAssetUrl: string;
@@ -53,13 +54,14 @@ export class Moment {
     }
     
     const stmt = db.prepare(`
-      INSERT INTO moments (englishName, chineseName, phoneNumber, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken, isCheckedIn)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO moments (englishName, chineseName, phoneNumber, postcode, email, rawImageDataUrl, photoAssetUrl, qrCodeUrl, aphorism, downloadToken, isCheckedIn)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       input.englishName,
       input.chineseName || null,
       input.phoneNumber,
+      input.postcode || null,
       input.email || null,
       input.rawImageDataUrl,
       input.photoAssetUrl,
@@ -105,6 +107,7 @@ export class Moment {
       englishName?: string;
       chineseName?: string;
       phoneNumber?: string;
+      postcode?: string;
       email?: string;
       isCheckedIn?: number;
     }
@@ -124,6 +127,10 @@ export class Moment {
     if (updates.phoneNumber !== undefined) {
       fields.push("phoneNumber = ?");
       values.push(updates.phoneNumber);
+    }
+    if (updates.postcode !== undefined) {
+      fields.push("postcode = ?");
+      values.push(updates.postcode);
     }
     if (updates.email !== undefined) {
       fields.push("email = ?");
