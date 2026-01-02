@@ -1195,7 +1195,45 @@ export function setRandomFlightTarget(ff: any) {
     ff.state = 'FLYING';
 }
 
-export function setPerchTarget(ff: { target: THREE.Vector3, state: string, timer?: number }, perchPoints: THREE.Vector3[]) {
+// Spatial hash for O(1) lookup of occupied cells - optimized for 10000+ fireflies
+const occupiedCells = new Set<string>();
+const CELL_SIZE = 3; // Same as minDistance
+
+function posToCell(x: number, y: number, z: number): string {
+    return `${Math.floor(x / CELL_SIZE)},${Math.floor(y / CELL_SIZE)},${Math.floor(z / CELL_SIZE)}`;
+}
+
+export function markPerchOccupied(pos: THREE.Vector3) {
+    occupiedCells.add(posToCell(pos.x, pos.y, pos.z));
+}
+
+export function clearPerchOccupied(pos: THREE.Vector3) {
+    occupiedCells.delete(posToCell(pos.x, pos.y, pos.z));
+}
+
+function isPerchOccupied(pt: THREE.Vector3): boolean {
+    // Check the cell and adjacent cells for safety
+    const cx = Math.floor(pt.x / CELL_SIZE);
+    const cy = Math.floor(pt.y / CELL_SIZE);
+    const cz = Math.floor(pt.z / CELL_SIZE);
+    
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                if (occupiedCells.has(`${cx + dx},${cy + dy},${cz + dz}`)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+export function setPerchTarget(
+    ff: { target: THREE.Vector3, state: string, timer?: number, obj?: THREE.Object3D },
+    perchPoints: THREE.Vector3[],
+    allFireflies?: { state: string, obj?: THREE.Object3D }[]
+) {
     const treeTopFireflyPercentage = 0.1;
 
     if (perchPoints.length === 0) {
@@ -1207,7 +1245,6 @@ export function setPerchTarget(ff: { target: THREE.Vector3, state: string, timer
     
     // Prefer camera-facing perch points (positive Z = facing camera)
     const cameraFacingPoints = perchPoints.filter(p => p.z > 0);
-    //console.log(`[PERCH] Total: ${perchPoints.length}, Camera-facing (z>0): ${cameraFacingPoints.length}`);
     if (cameraFacingPoints.length > 0) {
         candidates = cameraFacingPoints;
     }
@@ -1217,11 +1254,21 @@ export function setPerchTarget(ff: { target: THREE.Vector3, state: string, timer
         if (lowerPoints.length > 0) candidates = lowerPoints;
     }
 
+    // Filter out occupied cells using spatial hash - O(n) instead of O(n*m)
+    const unoccupied = candidates.filter(pt => !isPerchOccupied(pt));
+    if (unoccupied.length > 0) {
+        candidates = unoccupied;
+    }
+
     const pt = candidates[Math.floor(Math.random() * candidates.length)];
     ff.target.copy(pt);
     ff.target.x += (Math.random() - 0.5);
     ff.target.z += (Math.random() - 0.5);
     ff.target.y += 0.5;
+    
+    // Mark this cell as occupied
+    markPerchOccupied(ff.target);
+    
     ff.state = 'APPROACHING';
 }
 

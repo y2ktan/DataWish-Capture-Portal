@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import "./tree.css";
-import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createSwans, updateSwans, createCarpFish, updateCarpFish, createSpiritTree, createHillocksAndPagoda, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
+import { COLORS, CONFIG, setupSceneLights, createEveningBackground, createWater, updateWater, createSwans, updateSwans, createCarpFish, updateCarpFish, createSpiritTree, createHillocksAndPagoda, createGlareMaterial, createFireflyObject, setRandomFlightTarget, setPerchTarget, clearPerchOccupied, updateStars, updateTendrils, updateCanopyLeaves, updateFireflyGlow, updateFireflyWings } from "./utils";
 import ToggleFullScreen from "./toggleFullScreen";
 
 function TreePageInner() {
@@ -256,7 +256,7 @@ function TreePageInner() {
 
                     const dist = pos.distanceTo(ff.target);
                     if (dist < 3) {
-                        if (Math.random() > 0.3) setPerchTarget(ff, perchPoints);
+                        if (Math.random() > 0.3) setPerchTarget(ff, perchPoints, fireflies);
                         else setRandomFlightTarget(ff);
                         ff._approachStartTime = undefined;
                         ff._stuckFrames = 0;
@@ -294,7 +294,10 @@ function TreePageInner() {
                     }
                     
                     ff.timer -= delta;
-                    if (ff.timer <= 0) setRandomFlightTarget(ff);
+                    if (ff.timer <= 0) {
+                        clearPerchOccupied(pos); // Free up the cell when leaving perch
+                        setRandomFlightTarget(ff);
+                    }
                 }
 
                 const tempV = new THREE.Vector3();
