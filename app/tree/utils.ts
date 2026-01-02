@@ -139,7 +139,9 @@ export function createEveningBackground(scene: THREE.Scene) {
         fog: false
     });
     const moon = new THREE.Mesh(moonGeo, moonMat);
-    moon.position.set(80, 150, -200);
+    // Position moon to be visible from Azimuth ~97.6° (camera on +X side)
+    // Moon should appear in upper left of view
+    moon.position.set(-150, 150, -100);
     moon.renderOrder = 1;
     scene.add(moon);
 
@@ -687,9 +689,9 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
     });
 
     // Define hillock positions around the pond
-    // Keeping only the southwest pagoda - most visible from camera (0,20,100)
+    // Pagoda positioned to be visible from Azimuth ~97.6° (camera on +X side)
     const hillockData = [
-        { x: -70, z: 65, radius: 28, height: 9, pagodaScale: 26 },
+        { x: -50, z: -70, radius: 28, height: 9, pagodaScale: 26 },
     ];
 
     const loader = new GLTFLoader();

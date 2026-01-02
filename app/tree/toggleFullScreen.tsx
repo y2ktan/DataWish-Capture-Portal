@@ -46,9 +46,7 @@ export default function ToggleFullScreen({ containerRef, rendererRef, cameraRef,
                     cam.updateProjectionMatrix();
                     rnd.setSize(w, h);
                     dimensionsRef.current = { width: w, height: h };
-
-                    const isPortrait = w < h;
-                    cam.position.z = isPortrait ? CONFIG.INITIAL_Z_PORTRAIT : CONFIG.INITIAL_Z_LANDSCAPE;
+                    // Don't reset camera position - preserve user's current view angle
                 }
             });
         };

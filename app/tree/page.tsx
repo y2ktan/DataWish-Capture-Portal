@@ -74,7 +74,17 @@ function TreePageInner() {
         const initialZ = isPortrait ? CONFIG.INITIAL_Z_PORTRAIT : CONFIG.INITIAL_Z_LANDSCAPE;
 
         camera = new THREE.PerspectiveCamera(CONFIG.CAMERA_FOV, width / height, 0.1, 1000);
-        camera.position.set(0, 20, initialZ);
+        // Set camera position for Azimuth ~99.9°, Polar ~88.9°, Distance ~110
+        // Azimuth 99.9° means camera is on positive X side (right of tree)
+        const azimuthRad = 99.9 * (Math.PI / 180);
+        const polarRad = 88.9 * (Math.PI / 180);
+        const distance = 110;
+        const targetY = 28; // controls.target.y
+        camera.position.set(
+            distance * Math.sin(polarRad) * Math.sin(azimuthRad),
+            targetY + distance * Math.cos(polarRad),
+            distance * Math.sin(polarRad) * Math.cos(azimuthRad)
+        );
 
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
@@ -111,6 +121,7 @@ function TreePageInner() {
         controls.maxDistance = CONFIG.ZOOMOUT_MAX_DISTANCE;
         controls.target.set(0, 28, 0);
         controls.autoRotate = false;
+        controls.update(); // Sync controls with camera position
 
         controls.addEventListener('change', () => {
     const azimuth = controls.getAzimuthalAngle() * (180 / Math.PI);
