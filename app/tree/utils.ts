@@ -689,9 +689,9 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
     });
 
     // Define hillock positions around the pond
-    // Pagoda positioned to be visible from Azimuth ~97.6° (camera on +X side)
+    // Pagoda positioned to be visible from Azimuth ~99.9° (camera on +X side), moved closer to tree
     const hillockData = [
-        { x: -50, z: -70, radius: 28, height: 9, pagodaScale: 26 },
+        { x: 10, z: -60, radius: 20, height: 9, pagodaScale: 26 },
     ];
 
     const loader = new GLTFLoader();
