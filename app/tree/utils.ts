@@ -336,7 +336,7 @@ export function createSwans(scene: THREE.Scene): THREE.Group {
                 
                 // Position on water surface, swimming around tree
                 const angle = (i / swanCount) * Math.PI * 2 + Math.random() * 0.5;
-                const radius = 35 + Math.random() * 25; // Outer ring, beyond fish
+                const radius = 30 + Math.random() * 10; // Smaller circle (30-40) to stay between tree and hillock
                 swan.position.set(
                     Math.cos(angle) * radius,
                     0.3, // Just above water surface
