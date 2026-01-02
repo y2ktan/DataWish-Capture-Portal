@@ -112,6 +112,12 @@ function TreePageInner() {
         controls.target.set(0, 28, 0);
         controls.autoRotate = false;
 
+        controls.addEventListener('change', () => {
+    const azimuth = controls.getAzimuthalAngle() * (180 / Math.PI);
+    const polar = controls.getPolarAngle() * (180 / Math.PI);
+    console.log(`[CAMERA] Azimuth: ${azimuth.toFixed(1)}°, Polar: ${polar.toFixed(1)}°, Distance: ${controls.getDistance().toFixed(1)}`);
+});
+
 
         const spawnFirefly = (targetName: string) => {
             const { group, glare, outerGlare, light, wingL, wingR, abdomen, abdomenMat } = createFireflyObject(glareMat);
@@ -256,7 +262,7 @@ function TreePageInner() {
                     if (dist < moveStep || dist < 0.5) {
                         pos.copy(ff.target);
                         ff.state = 'PERCHED';
-                        ff.timer = 2 + Math.random() * 4;
+                        ff.timer = 15 + Math.random() * 30; // 15-60 seconds perched
                         ff.perchY = pos.y;
                         ff._approachStartTime = undefined;
                     } else {

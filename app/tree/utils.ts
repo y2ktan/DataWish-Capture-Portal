@@ -1202,8 +1202,16 @@ export function setPerchTarget(ff: { target: THREE.Vector3, state: string, timer
     }
 
     let candidates = perchPoints;
+    
+    // Prefer camera-facing perch points (positive Z = facing camera)
+    const cameraFacingPoints = perchPoints.filter(p => p.z > 0);
+    //console.log(`[PERCH] Total: ${perchPoints.length}, Camera-facing (z>0): ${cameraFacingPoints.length}`);
+    if (cameraFacingPoints.length > 0) {
+        candidates = cameraFacingPoints;
+    }
+    
     if (Math.random() > treeTopFireflyPercentage) {
-        const lowerPoints = perchPoints.filter(p => p.y < 35);
+        const lowerPoints = candidates.filter(p => p.y < 35);
         if (lowerPoints.length > 0) candidates = lowerPoints;
     }
 
