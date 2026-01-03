@@ -174,11 +174,34 @@ async function compositeImage(
     position: "center"
   });
 
-  // 2. Process Subject: Anchor to the bottom (south) to prevent floating
+  // 2. Process Subject: Preserve full image without cropping
+  // First get the subject dimensions to calculate proper scaling
+  const subjectMeta = await sharp(subjectBuffer).metadata();
+  const subjectWidth = subjectMeta.width || OUTPUT_WIDTH;
+  const subjectHeight = subjectMeta.height || OUTPUT_HEIGHT;
+  
+  // Calculate scale to fit the subject within the output canvas without cropping
+  // Use the smaller scale factor to ensure the entire subject fits
+  const scaleX = OUTPUT_WIDTH / subjectWidth;
+  const scaleY = OUTPUT_HEIGHT / subjectHeight;
+  const scale = Math.min(scaleX, scaleY);
+  
+  // Calculate new dimensions that preserve the full subject
+  const newWidth = Math.round(subjectWidth * scale);
+  const newHeight = Math.round(subjectHeight * scale);
+  
+  // Resize subject to fit entirely within canvas, then extend to full canvas size
+  // Position at bottom center so person stands on the ground
   const subjectResized = await sharp(subjectBuffer)
-    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
-      fit: "contain",
-      position: "south", // Anchor person to the bottom edge
+    .resize(newWidth, newHeight, {
+      fit: "inside", // Ensure entire image fits without cropping
+      withoutEnlargement: false
+    })
+    .extend({
+      top: OUTPUT_HEIGHT - newHeight, // Add padding at top to push subject to bottom
+      bottom: 0,
+      left: Math.round((OUTPUT_WIDTH - newWidth) / 2), // Center horizontally
+      right: OUTPUT_WIDTH - newWidth - Math.round((OUTPUT_WIDTH - newWidth) / 2),
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     })
     .toBuffer();
