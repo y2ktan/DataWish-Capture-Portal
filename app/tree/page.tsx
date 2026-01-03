@@ -149,10 +149,13 @@ function TreePageInner() {
 
             const labelDiv = document.createElement('div');
             labelDiv.className = 'firefly-label';
-            labelDiv.style.opacity = '0'; // Start hidden
+            labelDiv.style.opacity = '1'; // Start visible
             labelDiv.textContent = targetName;
 
             if (labelsRef.current) labelsRef.current.appendChild(labelDiv);
+            
+            // Spawn new firefly in visible area (positive X, front of camera)
+            group.position.set(25 + Math.random() * 25, 15 + Math.random() * 20, 5 + Math.random() * 15);
 
             const ff = {
                 obj: group,
@@ -168,7 +171,8 @@ function TreePageInner() {
                 state: 'FLYING',
                 target: new THREE.Vector3(),
                 timer: 0,
-                speed: 8 + Math.random() * 6
+                speed: 8 + Math.random() * 6,
+                visibleTimer: 30  // Keep visible for 30 seconds
             };
             fireflies.push(ff);
             setRandomFlightTarget(ff);
@@ -212,46 +216,58 @@ function TreePageInner() {
                 updateSwans(swanGroup, time);
             }
 
-            fireflies.forEach(ff => {
+            // Reusable vectors (CPU optimization - avoid GC pressure)
+            const _dir = new THREE.Vector3();
+            const _tempV = new THREE.Vector3();
+            const _screenW = dimensionsRef.current.width;
+            const _screenH = dimensionsRef.current.height;
+            
+            for (let i = 0; i < fireflies.length; i++) {
+                const ff = fireflies[i];
+                const pos = ff.obj.position;
+                const state = ff.state;
+                
                 // Smooth pulsing glow and abdomen color shift
                 updateFireflyGlow(ff, time);
                 
                 // Wing flutter animation
-                const isFlying = ff.state === 'FLYING' || ff.state === 'APPROACHING';
+                const isFlying = state === 'FLYING' || state === 'APPROACHING';
                 updateFireflyWings(ff, time, isFlying);
 
-                const pos = ff.obj.position;
                 // Boundary checks
-                // 1. Water level check - prevent diving into water
+                // 1. Water level check
                 if (pos.y < 4) {
                     pos.y = 4;
-                    // If flying low, push target up to prevent getting stuck
-                    if (ff.state === 'FLYING' || ff.state === 'APPROACHING') {
-                        ff.target.y = Math.max(ff.target.y, 10);
-                    }
+                    if (isFlying && ff.target.y < 10) ff.target.y = 10;
                 }
 
-                // 2. Max distance check - prevent flying off into void
-                const distToCenter = pos.distanceTo(treeCenter);
-                if (distToCenter > 80) { // Increased from 60 to allow near-camera flights
-                    // Pull back to tree
-                    const pullDir = new THREE.Vector3().subVectors(treeCenter, pos).normalize();
-                    pos.add(pullDir.multiplyScalar(ff.speed * delta * 2)); // Strong pull
-                    // Reset target to be closer
+                // 2. Max distance check (squared to avoid sqrt)
+                const dx = pos.x - treeCenter.x;
+                const dy = pos.y - treeCenter.y;
+                const dz = pos.z - treeCenter.z;
+                const distSqToCenter = dx * dx + dy * dy + dz * dz;
+                
+                if (distSqToCenter > 6400) { // 80^2
+                    _dir.set(-dx, -dy, -dz).normalize();
+                    const pull = ff.speed * delta * 2;
+                    pos.x += _dir.x * pull;
+                    pos.y += _dir.y * pull;
+                    pos.z += _dir.z * pull;
                     if (Math.random() > 0.95) setRandomFlightTarget(ff);
                 }
 
-                if (ff.state === 'FLYING') {
-                    const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
+                if (state === 'FLYING') {
+                    _dir.subVectors(ff.target, pos).normalize();
                     
-                    // Stuck detection
+                    // Stuck detection (squared distance)
                     if (!ff._lastPos) ff._lastPos = pos.clone();
                     if (!ff._stuckFrames) ff._stuckFrames = 0;
-                    const movedDist = pos.distanceTo(ff._lastPos);
-                    if (movedDist < 0.01) {
+                    const mdx = pos.x - ff._lastPos.x;
+                    const mdy = pos.y - ff._lastPos.y;
+                    const mdz = pos.z - ff._lastPos.z;
+                    if (mdx * mdx + mdy * mdy + mdz * mdz < 0.0001) {
                         ff._stuckFrames++;
                         if (ff._stuckFrames > 60) {
-                            console.log(`[FIREFLY] ${ff.label.textContent} reset - stuck in FLYING for ${ff._stuckFrames} frames`);
                             setRandomFlightTarget(ff);
                             ff._stuckFrames = 0;
                         }
@@ -260,72 +276,84 @@ function TreePageInner() {
                     }
                     ff._lastPos.copy(pos);
                     
-                    dir.x += Math.sin(time * 2 + ff.blinkOffset) * 0.5;
-                    dir.y += Math.cos(time * 1.5 + ff.blinkOffset) * 0.5;
-                    dir.z += Math.sin(time * 2.5 + ff.blinkOffset) * 0.5;
-                    dir.normalize();
+                    // Add wobble
+                    const wt = time + ff.blinkOffset;
+                    _dir.x += Math.sin(wt * 2) * 0.5;
+                    _dir.y += Math.cos(wt * 1.5) * 0.5;
+                    _dir.z += Math.sin(wt * 2.5) * 0.5;
+                    _dir.normalize();
 
-                    pos.add(dir.multiplyScalar(ff.speed * delta));
+                    const move = ff.speed * delta;
+                    pos.x += _dir.x * move;
+                    pos.y += _dir.y * move;
+                    pos.z += _dir.z * move;
 
-                    const dist = pos.distanceTo(ff.target);
-                    if (dist < 3) {
+                    // Check target reached (squared)
+                    const tdx = pos.x - ff.target.x;
+                    const tdy = pos.y - ff.target.y;
+                    const tdz = pos.z - ff.target.z;
+                    if (tdx * tdx + tdy * tdy + tdz * tdz < 9) {
                         if (Math.random() > 0.3) setPerchTarget(ff, perchPoints, fireflies);
                         else setRandomFlightTarget(ff);
                         ff._approachStartTime = undefined;
                         ff._stuckFrames = 0;
                     }
-                } else if (ff.state === 'APPROACHING') {
-                    const dist = pos.distanceTo(ff.target);
+                } else if (state === 'APPROACHING') {
+                    const adx = ff.target.x - pos.x;
+                    const ady = ff.target.y - pos.y;
+                    const adz = ff.target.z - pos.z;
+                    const distSq = adx * adx + ady * ady + adz * adz;
                     const moveStep = ff.speed * delta;
                     
-                    // Track time in APPROACHING state for watchdog
                     if (!ff._approachStartTime) ff._approachStartTime = time;
-                    const approachDuration = time - ff._approachStartTime;
+                    const approachDur = time - ff._approachStartTime;
                     
-                    // Prevent overshooting: if close enough, snap to target
-                    if (dist < moveStep || dist < 0.5) {
+                    if (distSq < moveStep * moveStep || distSq < 0.25) {
                         pos.copy(ff.target);
                         ff.state = 'PERCHED';
-                        ff.timer = 5 + Math.random() * 10; // 5-15 seconds perched
+                        ff.timer = 5 + Math.random() * 10;
                         ff.perchY = pos.y;
                         ff._approachStartTime = undefined;
                     } else {
-                        const dir = new THREE.Vector3().subVectors(ff.target, pos).normalize();
-                        pos.add(dir.multiplyScalar(moveStep));
+                        const invDist = 1 / Math.sqrt(distSq);
+                        pos.x += adx * invDist * moveStep;
+                        pos.y += ady * invDist * moveStep;
+                        pos.z += adz * invDist * moveStep;
                     }
                     
-                    // Watchdog: If stuck in APPROACHING for too long, reset
-                    if (approachDuration > 8) {
-                        console.log(`[FIREFLY] ${ff.label.textContent} reset - stuck for ${approachDuration.toFixed(1)}s`);
+                    if (approachDur > 8) {
                         setRandomFlightTarget(ff);
                         ff._approachStartTime = undefined;
                     }
-                } else if (ff.state === 'PERCHED') {
-                    // Stable bobbing using initial perch Y
+                } else if (state === 'PERCHED') {
                     if (ff.perchY !== undefined) {
                         pos.y = ff.perchY + Math.sin(time * 3) * 0.1;
                     }
-                    
                     ff.timer -= delta;
                     if (ff.timer <= 0) {
-                        clearPerchOccupied(pos); // Free up the cell when leaving perch
+                        clearPerchOccupied(pos);
                         setRandomFlightTarget(ff);
                     }
                 }
 
-                const tempV = new THREE.Vector3();
-                ff.obj.getWorldPosition(tempV);
-                tempV.y += 0.5;
-                tempV.project(camera);
+                // Count down visibility timer
+                if (ff.visibleTimer > 0) {
+                    ff.visibleTimer -= delta;
+                }
 
-                const x = (tempV.x * 0.5 + 0.5) * dimensionsRef.current.width;
-                const y = (tempV.y * -0.5 + 0.5) * dimensionsRef.current.height;
-                const isOffScreen = isNaN(x) || isNaN(y) || Math.abs(tempV.z) > 1 || x < -50 || x > dimensionsRef.current.width + 50 || y < -50 || y > dimensionsRef.current.height + 50;
+                // Project to screen (reuse _tempV)
+                ff.obj.getWorldPosition(_tempV);
+                _tempV.project(camera);
 
-                // Always show labels, increase opacity
-                ff.label.style.opacity = isOffScreen ? '0.4' : '1';
-                ff.label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
-            });
+                const x = (_tempV.x * 0.5 + 0.5) * _screenW;
+                const y = (_tempV.y * -0.5 + 0.5) * _screenH;
+                const isOffScreen = Math.abs(_tempV.z) > 1 || x < -50 || x > _screenW + 50 || y < -50 || y > _screenH + 50;
+
+                // Keep new fireflies visible for 30s, then fade when offscreen
+                // Position label below firefly with 12px gap (firefly ~10px + 2px min gap)
+                const opacity = ff.visibleTimer > 0 ? '1' : (isOffScreen ? '0.5' : '1');
+                ff.label.style.cssText = `opacity:${opacity};transform:translate(-50%,0) translate(${x}px,${y + 12}px)`;
+            }
                 // Pulse the tree and make it brighter when zoomed out
                 const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
                 let zoomBrightness = 1;
