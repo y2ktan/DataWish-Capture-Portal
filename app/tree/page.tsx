@@ -286,7 +286,7 @@ function TreePageInner() {
                     if (dist < moveStep || dist < 0.5) {
                         pos.copy(ff.target);
                         ff.state = 'PERCHED';
-                        ff.timer = 15 + Math.random() * 30; // 15-60 seconds perched
+                        ff.timer = 5 + Math.random() * 10; // 5-15 seconds perched
                         ff.perchY = pos.y;
                         ff._approachStartTime = undefined;
                     } else {

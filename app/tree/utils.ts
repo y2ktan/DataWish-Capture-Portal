@@ -1191,20 +1191,30 @@ export function setRandomFlightTarget(ff: any) {
     const currentPos = ff.obj ? ff.obj.position : new THREE.Vector3();
     let attempts = 0;
     
+    // Hillock center position
+    const hillockX = 38;
+    const hillockZ = -30;
+    
     // Try up to 3 times to find a target far enough away
     do {
-        if (rand < 0.2) {
-            // ZONE 1: NEAR CAMERA (High Radius)
+        if (rand < 0.25) {
+            // ZONE 1: NEAR CAMERA (High Radius) - 25%
             const r = 60 + Math.random() * 30;
             const theta = (Math.random() - 0.5) * Math.PI; 
             const y = 10 + Math.random() * 30;
             ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
-        } else if (rand < 0.4) {
-            // ZONE 2: ABOVE TREE (High Altitude)
+        } else if (rand < 0.50) {
+            // ZONE 2: ABOVE TREE (High Altitude) - 25%
             const r = Math.random() * 20;
             const theta = Math.random() * Math.PI * 2;
             const y = 50 + Math.random() * 30;
             ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+        } else if (rand < 0.70) {
+            // ZONE 4: NEAR HILLOCK (around pagoda area) - 20%
+            const r = 5 + Math.random() * 20;  // 5-25 units from hillock center
+            const theta = Math.random() * Math.PI * 2;
+            const y = 5 + Math.random() * 20;  // Low to mid height near hillock
+            ff.target.set(hillockX + Math.cos(theta) * r, y, hillockZ + Math.sin(theta) * r);
         } else {
             // ZONE 3: STANDARD TREE AREA (Canopy & Trunk)
             const r = 5 + Math.random() * 15; // Minimum 5 radius
@@ -1272,10 +1282,10 @@ export function setPerchTarget(
 
     let candidates = perchPoints;
     
-    // Prefer camera-facing perch points (positive Z = facing camera)
-    const cameraFacingPoints = perchPoints.filter(p => p.z > 0);
-    if (cameraFacingPoints.length > 0) {
-        candidates = cameraFacingPoints;
+    // Prefer perch points on positive X-axis (visible from camera at Azimuth ~105°)
+    const positiveXPoints = perchPoints.filter(p => p.x > 20);
+    if (positiveXPoints.length > 0) {
+        candidates = positiveXPoints;
     }
     
     if (Math.random() > treeTopFireflyPercentage) {
@@ -1421,10 +1431,10 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     bodyGroup.rotation.x = Math.PI / 2;
     group.add(bodyGroup);
 
-    // Random starting position - close to tree
-    const r = 3 + Math.random() * 9;
-    const ang = Math.random() * Math.PI * 2;
-    group.position.set(Math.cos(ang) * r, 15 + Math.random() * 30, Math.sin(ang) * r);
+    // Random starting position - full 360° around tree for natural left-right movement
+    const r = 5 + Math.random() * 15;
+    const ang = Math.random() * Math.PI * 2;  // Full circle
+    group.position.set(Math.cos(ang) * r, 15 + Math.random() * 35, Math.sin(ang) * r);
     group.frustumCulled = false;
     group.renderOrder = 998;
 
