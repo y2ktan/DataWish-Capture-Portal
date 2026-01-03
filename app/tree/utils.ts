@@ -750,7 +750,7 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
         // 2. Load and Light the Pagoda
         loader.load(
-            '/assets/traditional+chinese+building+3d+model.glb',
+            '/assets/traditional+temple+3d+model2.glb',
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
@@ -788,7 +788,7 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
                 hillockGroup.add(frontLight);
                 
                 const backLight = new THREE.PointLight(0xf5f0e6, 150, 100); // Warm elegant white
-                backLight.position.set(data.x - 15, hillTopY + 5, data.z + 2);
+                backLight.position.set(data.x - 10, hillTopY + 5, data.z + 2);
                 hillockGroup.add(backLight);
 
                 // 4. Add "Haze" Sprite (Fake Volumetric Glow)
