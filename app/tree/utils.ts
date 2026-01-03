@@ -690,8 +690,10 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
     // Define hillock positions around the pond
     // Pagoda positioned to be visible from Azimuth ~99.9° (camera on +X side), moved closer to tree
+    // z move to left (further from tree)
+    // x move to front (closer to camera)
     const hillockData = [
-        { x: 10, z: -60, radius: 23, height: 9, pagodaScale: 26 },
+        { x: 38, z: -30, radius: 25, height: 9, pagodaScale: 35 },
     ];
 
     const loader = new GLTFLoader();
@@ -706,20 +708,20 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
         hillockGroup.add(hill);
 
         // Add terrain bumps for detail
-        for (let i = 0; i < 5; i++) {
-            const bumpRadius = 5 + Math.random() * 8;
-            const bumpGeo = new THREE.SphereGeometry(bumpRadius, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-            const bump = new THREE.Mesh(bumpGeo, grassMat);
-            const angle = (i / 5) * Math.PI * 2;
-            const dist = data.radius * 0.6 + Math.random() * 10;
-            bump.position.set(
-                data.x + Math.cos(angle) * dist,
-                0,
-                data.z + Math.sin(angle) * dist
-            );
-            bump.scale.set(1, 0.25 + Math.random() * 0.15, 1);
-            hillockGroup.add(bump);
-        }
+        // for (let i = 0; i < 5; i++) {
+        //     const bumpRadius = 5 + Math.random() * 8;
+        //     const bumpGeo = new THREE.SphereGeometry(bumpRadius, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+        //     const bump = new THREE.Mesh(bumpGeo, grassMat);
+        //     const angle = (i / 5) * Math.PI * 2;
+        //     const dist = data.radius * 0.6 + Math.random() * 10;
+        //     bump.position.set(
+        //         data.x + Math.cos(angle) * dist,
+        //         0,
+        //         data.z + Math.sin(angle) * dist
+        //     );
+        //     bump.scale.set(1, 0.25 + Math.random() * 0.15, 1);
+        //     hillockGroup.add(bump);
+        // }
 
         const hillTopY = data.height * 0.8;
 
@@ -729,7 +731,10 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
-                pagodaModel.position.set(data.x, hillTopY + 1, data.z);
+                // X means forward (positive x is away from camera, so +5 moves it forward)
+                // Y means up (positive y lifts it above the hill)
+                // z means left/right (negative z moves it left, positive z moves it right)
+                pagodaModel.position.set(data.x + 5, hillTopY + 1, data.z);
                 pagodaModel.scale.set(data.pagodaScale, data.pagodaScale, data.pagodaScale);
 
                 // Make the pagoda glow from within
@@ -751,16 +756,16 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
                 // 3. Add just 3 strategic lights - 2x brighter with reduced range for performance
                 // Center light - main illumination (2x intensity, shorter range)
                 const centerLight = new THREE.PointLight(0xf5f0e6, 100, 100); // Warm elegant white
-                centerLight.position.set(data.x + 5, hillTopY + 10, data.z);
+                centerLight.position.set(data.x + 10, hillTopY + 10, data.z);
                 hillockGroup.add(centerLight);
                 
                 // Two side lights for depth (2x intensity, shorter range)
-                const frontLight = new THREE.PointLight(0xf5f0e6, 100, 100); // Warm elegant white
-                frontLight.position.set(data.x + 10, hillTopY + 5, data.z + 2);
+                const frontLight = new THREE.PointLight(0xf5f0e6, 150, 100); // Warm elegant white
+                frontLight.position.set(data.x + 15, hillTopY + 5, data.z + 2);
                 hillockGroup.add(frontLight);
                 
-                const backLight = new THREE.PointLight(0xf5f0e6, 100, 100); // Warm elegant white
-                backLight.position.set(data.x - 10, hillTopY + 5, data.z + 2);
+                const backLight = new THREE.PointLight(0xf5f0e6, 150, 100); // Warm elegant white
+                backLight.position.set(data.x - 15, hillTopY + 5, data.z + 2);
                 hillockGroup.add(backLight);
 
                 // 4. Add "Haze" Sprite (Fake Volumetric Glow)
