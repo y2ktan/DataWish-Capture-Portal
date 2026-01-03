@@ -132,16 +132,35 @@ export function createEveningBackground(scene: THREE.Scene) {
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
 
-    // Add moon
-    const moonGeo = new THREE.SphereGeometry(12, 32, 32);   /* first param: moon size */
-    const moonMat = new THREE.MeshBasicMaterial({
-        color: 0xffff99,
-        fog: false
+    // Add moon as a Sprite (always faces camera, always appears round)
+    const moonCanvas = document.createElement('canvas');
+    moonCanvas.width = 128;
+    moonCanvas.height = 128;
+    const moonCtx = moonCanvas.getContext('2d')!;
+    
+    // Draw a perfect circle with glow
+    const gradient = moonCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, 'rgba(255, 255, 240, 1)');
+    gradient.addColorStop(0.7, 'rgba(255, 255, 153, 1)');
+    gradient.addColorStop(0.85, 'rgba(255, 255, 153, 0.5)');
+    gradient.addColorStop(1, 'rgba(255, 255, 153, 0)');
+    
+    moonCtx.fillStyle = gradient;
+    moonCtx.beginPath();
+    moonCtx.arc(64, 64, 64, 0, Math.PI * 2);
+    moonCtx.fill();
+    
+    const moonTexture = new THREE.CanvasTexture(moonCanvas);
+    const moonMat = new THREE.SpriteMaterial({
+        map: moonTexture,
+        fog: false,
+        transparent: true
     });
-    const moon = new THREE.Mesh(moonGeo, moonMat);
+    const moon = new THREE.Sprite(moonMat);
     // Position moon to be visible from Azimuth ~97.6° (camera on +X side)
-    // Moon should appear in upper left of view
-    moon.position.set(-150, 150, -100);
+    // Moon should appear in upper right of view
+    moon.position.set(-150, 140, -100);
+    moon.scale.set(40, 40, 1);  // Size of the moon sprite
     moon.renderOrder = 1;
     scene.add(moon);
 
@@ -305,6 +324,8 @@ export function createWater(scene: THREE.Scene): { water: THREE.Mesh, particles:
 export function createSwans(scene: THREE.Scene): THREE.Group {
     const swanGroup = new THREE.Group();
     swanGroup.name = 'swans';
+    // Shift swans right (positive z) by 10 units to match tree position
+    swanGroup.position.z = 10;
     
     const loader = new GLTFLoader();
     
@@ -441,6 +462,8 @@ export function updateWater(water: THREE.Mesh, particles: THREE.Points, time: nu
 export function createCarpFish(scene: THREE.Scene): THREE.Group {
     const fishGroup = new THREE.Group();
     fishGroup.name = 'carpFish';
+    // Shift fish right (positive z) by 10 units to match tree position
+    fishGroup.position.z = 10;
     
     const loader = new GLTFLoader();
     
@@ -755,7 +778,7 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
                 // 3. Add just 3 strategic lights - 2x brighter with reduced range for performance
                 // Center light - main illumination (2x intensity, shorter range)
-                const centerLight = new THREE.PointLight(0xf5f0e6, 100, 100); // Warm elegant white
+                const centerLight = new THREE.PointLight(0xf5f0e6, 80, 100); // Warm elegant white
                 centerLight.position.set(data.x + 10, hillTopY + 10, data.z);
                 hillockGroup.add(centerLight);
                 
@@ -976,7 +999,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     );
     
     // Position the tree group
-    treeGroup.position.y = -5;
+    // Shift tree right (positive z) by 10 units relative to camera view
+    treeGroup.position.set(0, -5, 10);
     
     scene.add(treeGroup);
     
