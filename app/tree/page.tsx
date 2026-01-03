@@ -401,6 +401,11 @@ function TreePageInner() {
         // Hide loading immediately - tree is ready to view
         setLoading(false);
 
+        // Generate 1000 dummy fireflies for testing
+        // for (let i = 0; i < 100; i++) {
+        //     spawnFirefly(`Firefly_${i + 1}`);
+        // }
+
         // Use SSE for real-time updates if section is specified
         let eventSource: EventSource | null = null;
         

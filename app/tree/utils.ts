@@ -1162,8 +1162,8 @@ export function updateFireflyGlow(ff: FireflyState, time: number) {
         ff.outerGlare.material.opacity = 0.2 + smoothPulse * 0.3;
     }
     
-    // Light intensity - scales with the PointLight base intensity
-    ff.light.intensity = 150 + smoothPulse * 100;
+    // Light intensity - disabled for performance (sprites provide visual glow)
+    // ff.light.intensity = 150 + smoothPulse * 100;
     
     // Abdomen color shift: warm orange -> bright golden
     if (ff.abdomenMat) {
@@ -1341,10 +1341,10 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     const group = new THREE.Group();
     const bodyGroup = new THREE.Group();
 
-    // 1. DUAL GLOW SYSTEM
+    // 1. DUAL GLOW SYSTEM - use shared materials for performance
     // Outer purple aura
-    const outerGlare = new THREE.Sprite(glareMat.clone());
-    outerGlare.material.color.setHex(COLORS.FIREFLY_GLOW_OUTER);
+    const outerGlare = new THREE.Sprite(glareMat);
+    // Note: color is set on shared material, all fireflies share same color
     outerGlare.scale.set(12, 12, 12);
     outerGlare.frustumCulled = false;
     outerGlare.renderOrder = 997;
@@ -1352,19 +1352,17 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     group.add(outerGlare);
 
     // Inner warm golden glow
-    const innerGlare = new THREE.Sprite(glareMat.clone());
-    innerGlare.material.color.setHex(COLORS.FIREFLY_GLOW_INNER);
+    const innerGlare = new THREE.Sprite(glareMat);
+    // Note: using shared material for performance
     innerGlare.scale.set(6, 6, 6);
     innerGlare.frustumCulled = false;
     innerGlare.renderOrder = 998;
     innerGlare.position.set(0, -0.2, 0);
     group.add(innerGlare);
 
-    // 2. Warm Light Source
-    const light = new THREE.PointLight(COLORS.FIREFLY_LIGHT, 100, 820);
-    light.frustumCulled = false;
-    light.position.set(0, -0.2, 0);
-    group.add(light);
+    // 2. Warm Light Source - DISABLED for performance (too many uniforms with 1000+ fireflies)
+    // Using sprite glow instead for visual effect
+    const light = null as unknown as THREE.PointLight; // Placeholder to maintain interface
 
     // 3. HEAD - small dark sphere
     const headGeo = new THREE.SphereGeometry(0.12, 8, 6);
@@ -1395,25 +1393,24 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
     thorax.frustumCulled = false;
     bodyGroup.add(thorax);
 
-    // 6. ABDOMEN (Light Organ) - glowing teardrop
+    // 6. ABDOMEN (Light Organ) - glowing teardrop (shared material for performance)
     const abdomenGeo = new THREE.SphereGeometry(0.18, 10, 8);
     abdomenGeo.scale(1, 1.6, 0.85);
-    const abdomenMatInstance = ffAbdomenMat.clone();
-    const abdomen = new THREE.Mesh(abdomenGeo, abdomenMatInstance);
+    const abdomen = new THREE.Mesh(abdomenGeo, ffAbdomenMat);
     abdomen.position.set(0, -0.1, 0);
     abdomen.frustumCulled = false;
     abdomen.renderOrder = 999;
     bodyGroup.add(abdomen);
 
-    // 7. TEARDROP WINGS - elegant curved shape
-    const wingL = new THREE.Mesh(ffWingGeo, ffWingMat.clone());
+    // 7. TEARDROP WINGS - elegant curved shape (shared material)
+    const wingL = new THREE.Mesh(ffWingGeo, ffWingMat);
     wingL.position.set(-0.2, 0.25, 0);
     wingL.rotation.set(0, 0, Math.PI / 5);
     wingL.frustumCulled = false;
     wingL.renderOrder = 998;
     bodyGroup.add(wingL);
 
-    const wingR = new THREE.Mesh(ffWingGeo, ffWingMat.clone());
+    const wingR = new THREE.Mesh(ffWingGeo, ffWingMat);
     wingR.position.set(0.2, 0.25, 0);
     wingR.rotation.set(0, 0, -Math.PI / 5);
     wingR.frustumCulled = false;
@@ -1439,6 +1436,6 @@ export function createFireflyObject(glareMat: THREE.SpriteMaterial) {
         wingL, 
         wingR, 
         abdomen,
-        abdomenMat: abdomenMatInstance
+        abdomenMat: null // Shared material, no per-firefly color animation
     };
 }
