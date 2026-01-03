@@ -132,16 +132,35 @@ export function createEveningBackground(scene: THREE.Scene) {
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
 
-    // Add moon
-    const moonGeo = new THREE.SphereGeometry(12, 32, 32);   /* first param: moon size */
-    const moonMat = new THREE.MeshBasicMaterial({
-        color: 0xffff99,
-        fog: false
+    // Add moon as a Sprite (always faces camera, always appears round)
+    const moonCanvas = document.createElement('canvas');
+    moonCanvas.width = 128;
+    moonCanvas.height = 128;
+    const moonCtx = moonCanvas.getContext('2d')!;
+    
+    // Draw a perfect circle with glow
+    const gradient = moonCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, 'rgba(255, 255, 240, 1)');
+    gradient.addColorStop(0.7, 'rgba(255, 255, 153, 1)');
+    gradient.addColorStop(0.85, 'rgba(255, 255, 153, 0.5)');
+    gradient.addColorStop(1, 'rgba(255, 255, 153, 0)');
+    
+    moonCtx.fillStyle = gradient;
+    moonCtx.beginPath();
+    moonCtx.arc(64, 64, 64, 0, Math.PI * 2);
+    moonCtx.fill();
+    
+    const moonTexture = new THREE.CanvasTexture(moonCanvas);
+    const moonMat = new THREE.SpriteMaterial({
+        map: moonTexture,
+        fog: false,
+        transparent: true
     });
-    const moon = new THREE.Mesh(moonGeo, moonMat);
+    const moon = new THREE.Sprite(moonMat);
     // Position moon to be visible from Azimuth ~97.6° (camera on +X side)
-    // Moon should appear in upper left of view
-    moon.position.set(-150, 150, -100);
+    // Moon should appear in upper right of view
+    moon.position.set(-150, 140, -100);
+    moon.scale.set(40, 40, 1);  // Size of the moon sprite
     moon.renderOrder = 1;
     scene.add(moon);
 
@@ -305,6 +324,8 @@ export function createWater(scene: THREE.Scene): { water: THREE.Mesh, particles:
 export function createSwans(scene: THREE.Scene): THREE.Group {
     const swanGroup = new THREE.Group();
     swanGroup.name = 'swans';
+    // Shift swans right (positive z) by 10 units to match tree position
+    swanGroup.position.z = 10;
     
     const loader = new GLTFLoader();
     
@@ -336,7 +357,7 @@ export function createSwans(scene: THREE.Scene): THREE.Group {
                 
                 // Position on water surface, swimming around tree
                 const angle = (i / swanCount) * Math.PI * 2 + Math.random() * 0.5;
-                const radius = 30 + Math.random() * 10; // Smaller circle (30-40) to stay between tree and hillock
+                const radius = 25 + Math.random() * 8; // Smaller circle (25-33) to stay between tree and hillock
                 swan.position.set(
                     Math.cos(angle) * radius,
                     0.3, // Just above water surface
@@ -351,7 +372,7 @@ export function createSwans(scene: THREE.Scene): THREE.Group {
                 swan.userData = {
                     angle: angle,
                     radius: radius,
-                    speed: 0.015 + Math.random() * 0.01, // Very slow, graceful
+                    speed: 0.04 + Math.random() * 0.02, // Faster swimming
                     phase: Math.random() * Math.PI * 2,
                     bobSpeed: 1 + Math.random() * 0.5
                 };
@@ -441,6 +462,8 @@ export function updateWater(water: THREE.Mesh, particles: THREE.Points, time: nu
 export function createCarpFish(scene: THREE.Scene): THREE.Group {
     const fishGroup = new THREE.Group();
     fishGroup.name = 'carpFish';
+    // Shift fish right (positive z) by 10 units to match tree position
+    fishGroup.position.z = 10;
     
     const loader = new GLTFLoader();
     
@@ -690,8 +713,10 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
     // Define hillock positions around the pond
     // Pagoda positioned to be visible from Azimuth ~99.9° (camera on +X side), moved closer to tree
+    // z move to left (further from tree)
+    // x move to front (closer to camera)
     const hillockData = [
-        { x: 10, z: -60, radius: 20, height: 9, pagodaScale: 26 },
+        { x: 38, z: -30, radius: 25, height: 9, pagodaScale: 35 },
     ];
 
     const loader = new GLTFLoader();
@@ -706,30 +731,33 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
         hillockGroup.add(hill);
 
         // Add terrain bumps for detail
-        for (let i = 0; i < 5; i++) {
-            const bumpRadius = 5 + Math.random() * 8;
-            const bumpGeo = new THREE.SphereGeometry(bumpRadius, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-            const bump = new THREE.Mesh(bumpGeo, grassMat);
-            const angle = (i / 5) * Math.PI * 2;
-            const dist = data.radius * 0.6 + Math.random() * 10;
-            bump.position.set(
-                data.x + Math.cos(angle) * dist,
-                0,
-                data.z + Math.sin(angle) * dist
-            );
-            bump.scale.set(1, 0.25 + Math.random() * 0.15, 1);
-            hillockGroup.add(bump);
-        }
+        // for (let i = 0; i < 5; i++) {
+        //     const bumpRadius = 5 + Math.random() * 8;
+        //     const bumpGeo = new THREE.SphereGeometry(bumpRadius, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+        //     const bump = new THREE.Mesh(bumpGeo, grassMat);
+        //     const angle = (i / 5) * Math.PI * 2;
+        //     const dist = data.radius * 0.6 + Math.random() * 10;
+        //     bump.position.set(
+        //         data.x + Math.cos(angle) * dist,
+        //         0,
+        //         data.z + Math.sin(angle) * dist
+        //     );
+        //     bump.scale.set(1, 0.25 + Math.random() * 0.15, 1);
+        //     hillockGroup.add(bump);
+        // }
 
         const hillTopY = data.height * 0.8;
 
         // 2. Load and Light the Pagoda
         loader.load(
-            '/assets/pagoda+3d+model.glb',
+            '/assets/traditional+chinese+building+3d+model.glb',
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
-                pagodaModel.position.set(data.x, hillTopY, data.z);
+                // X means forward (positive x is away from camera, so +5 moves it forward)
+                // Y means up (positive y lifts it above the hill)
+                // z means left/right (negative z moves it left, positive z moves it right)
+                pagodaModel.position.set(data.x + 5, hillTopY + 1, data.z);
                 pagodaModel.scale.set(data.pagodaScale, data.pagodaScale, data.pagodaScale);
 
                 // Make the pagoda glow from within
@@ -750,32 +778,32 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
                 // 3. Add just 3 strategic lights - 2x brighter with reduced range for performance
                 // Center light - main illumination (2x intensity, shorter range)
-                const centerLight = new THREE.PointLight(0xffaa44, 4000, 80);
-                centerLight.position.set(data.x, hillTopY + 15, data.z);
+                const centerLight = new THREE.PointLight(0xf5f0e6, 80, 100); // Warm elegant white
+                centerLight.position.set(data.x + 10, hillTopY + 10, data.z);
                 hillockGroup.add(centerLight);
                 
                 // Two side lights for depth (2x intensity, shorter range)
-                const sideLight1 = new THREE.PointLight(0xffaa44, 2500, 60);
-                sideLight1.position.set(data.x + 15, hillTopY + 5, data.z);
-                hillockGroup.add(sideLight1);
+                const frontLight = new THREE.PointLight(0xf5f0e6, 150, 100); // Warm elegant white
+                frontLight.position.set(data.x + 15, hillTopY + 5, data.z + 2);
+                hillockGroup.add(frontLight);
                 
-                const sideLight2 = new THREE.PointLight(0xffaa44, 2500, 60);
-                sideLight2.position.set(data.x - 15, hillTopY + 5, data.z);
-                hillockGroup.add(sideLight2);
+                const backLight = new THREE.PointLight(0xf5f0e6, 150, 100); // Warm elegant white
+                backLight.position.set(data.x - 15, hillTopY + 5, data.z + 2);
+                hillockGroup.add(backLight);
 
                 // 4. Add "Haze" Sprite (Fake Volumetric Glow)
-                const glowSprite = new THREE.Sprite(flareMat.clone());
-                glowSprite.position.set(data.x, hillTopY + 12, data.z);
-                glowSprite.scale.set(25, 25, 1);
-                glowSprite.material.color.setHex(0xff6600);
-                glowSprite.material.opacity = 0.4;
-                hillockGroup.add(glowSprite);
+                // const glowSprite = new THREE.Sprite(flareMat.clone());
+                // glowSprite.position.set(data.x, hillTopY + 5, data.z);
+                // glowSprite.scale.set(25, 25, 1);
+                // glowSprite.material.color.setHex(0xf5f0e6); // Warm elegant white
+                // glowSprite.material.opacity = 0.4;
+                // hillockGroup.add(glowSprite);
 
                 // 5. Add a dedicated SpotLight to highlight the pagoda's silhouette
-                const moonSpot = new THREE.SpotLight(0xffffcc, 15, 150, Math.PI / 4, 0.3);
-                moonSpot.position.set(data.x, hillTopY + 80, data.z);
-                moonSpot.target = pagodaModel;
-                hillockGroup.add(moonSpot);
+                // const moonSpot = new THREE.SpotLight(0xf5f0e6, 15, 150, Math.PI / 4, 0.3);
+                // moonSpot.position.set(data.x, hillTopY + 5, data.z);
+                // moonSpot.target = pagodaModel;
+                // hillockGroup.add(moonSpot);
             },
             undefined,
             (error) => console.error(`Error loading pagoda ${index}:`, error)
@@ -971,7 +999,8 @@ export function createSpiritTree(scene: THREE.Scene, perchPoints: THREE.Vector3[
     );
     
     // Position the tree group
-    treeGroup.position.y = -5;
+    // Shift tree right (positive z) by 10 units relative to camera view
+    treeGroup.position.set(0, -5, 10);
     
     scene.add(treeGroup);
     
