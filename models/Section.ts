@@ -130,4 +130,16 @@ export class Section {
     `);
     return stmt.all() as { englishName: string; momentId: number; sectionId: number }[];
   }
+
+  static getAllCheckedInNames(): string[] {
+    const db = getDatabase();
+    const stmt = db.prepare(`
+      SELECT DISTINCT COALESCE(m.chineseName, m.englishName) as displayName
+      FROM section_checkins sc
+      JOIN moments m ON sc.momentId = m.id
+      ORDER BY sc.checkedInAt DESC
+    `);
+    const rows = stmt.all() as { displayName: string }[];
+    return rows.map(r => r.displayName);
+  }
 }

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Moment } from "@/models/Moment";
 import { Section } from "@/models/Section";
 import { processImageWithAphorism } from "@/lib/imageProcessing";
-import { broadcastNewFirefly } from "@/lib/sseManager";
 import crypto from "crypto";
 
 // Rate limiting: 5 requests per minute per IP for image processing
@@ -123,9 +122,6 @@ export async function POST(req: NextRequest) {
       downloadToken,
       isCheckedIn
     });
-
-    // Broadcast new firefly to all global SSE connections (use Chinese name if available)
-    broadcastNewFirefly(chineseName || englishName);
 
     return NextResponse.json(
       {

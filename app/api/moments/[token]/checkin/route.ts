@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Moment } from "@/models/Moment";
 import { Section } from "@/models/Section";
+import { broadcastNewFirefly } from "@/lib/sseManager";
 
 // POST /api/moments/[token]/checkin - Check in to a section
 export async function POST(
@@ -147,6 +148,10 @@ export async function PUT(
 
     // Release the firefly
     const checkin = Section.releaseFirefly(moment.id, sectionId);
+
+    // Broadcast new firefly to global SSE connections (use Chinese name if available)
+    const displayName = moment.chineseName || moment.englishName;
+    broadcastNewFirefly(displayName);
 
     return NextResponse.json({
       success: true,
