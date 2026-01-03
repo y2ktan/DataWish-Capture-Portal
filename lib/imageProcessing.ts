@@ -142,17 +142,31 @@ async function createTextOverlay(aphorism: BilingualAphorism): Promise<Buffer> {
   ctx.strokeStyle = "black";
   ctx.fillStyle = "yellow";
   
-  // Handle multi-line English aphorisms
-  const englishLines = aphorism.english.split(". ");
-  let currentY = englishY;
+  // Handle long English text by wrapping
+  const maxWidth = OUTPUT_WIDTH - 60; // Leave 30px padding on each side
+  const words = aphorism.english.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
   
-  for (const line of englishLines) {
-    if (line.trim()) {
-      const textToDraw = englishLines.length > 1 && !line.endsWith(".") ? `${line.trim()}.` : line.trim();
-      ctx.strokeText(textToDraw, OUTPUT_WIDTH / 2, currentY);
-      ctx.fillText(textToDraw, OUTPUT_WIDTH / 2, currentY);
-      currentY += englishFontSize + 5; // Add spacing between lines
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
     }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  
+  let currentY = englishY;
+  for (const line of lines) {
+    ctx.strokeText(line, OUTPUT_WIDTH / 2, currentY);
+    ctx.fillText(line, OUTPUT_WIDTH / 2, currentY);
+    currentY += englishFontSize + 8;
   }
   
   return canvas.toBuffer("image/png");
@@ -175,33 +189,11 @@ async function compositeImage(
   });
 
   // 2. Process Subject: Preserve full image without cropping
-  // First get the subject dimensions to calculate proper scaling
-  const subjectMeta = await sharp(subjectBuffer).metadata();
-  const subjectWidth = subjectMeta.width || OUTPUT_WIDTH;
-  const subjectHeight = subjectMeta.height || OUTPUT_HEIGHT;
-  
-  // Calculate scale to fit the subject within the output canvas without cropping
-  // Use the smaller scale factor to ensure the entire subject fits
-  const scaleX = OUTPUT_WIDTH / subjectWidth;
-  const scaleY = OUTPUT_HEIGHT / subjectHeight;
-  const scale = Math.min(scaleX, scaleY);
-  
-  // Calculate new dimensions that preserve the full subject
-  const newWidth = Math.round(subjectWidth * scale);
-  const newHeight = Math.round(subjectHeight * scale);
-  
-  // Resize subject to fit entirely within canvas, then extend to full canvas size
-  // Position at bottom center so person stands on the ground
+  // Resize to fit width, let height be proportional to maintain aspect ratio
   const subjectResized = await sharp(subjectBuffer)
-    .resize(newWidth, newHeight, {
-      fit: "inside", // Ensure entire image fits without cropping
-      withoutEnlargement: false
-    })
-    .extend({
-      top: OUTPUT_HEIGHT - newHeight, // Add padding at top to push subject to bottom
-      bottom: 0,
-      left: Math.round((OUTPUT_WIDTH - newWidth) / 2), // Center horizontally
-      right: OUTPUT_WIDTH - newWidth - Math.round((OUTPUT_WIDTH - newWidth) / 2),
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+      fit: "contain", // Fit entire subject within bounds, no cropping
+      position: "bottom", // Anchor to bottom so person stands on ground
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     })
     .toBuffer();

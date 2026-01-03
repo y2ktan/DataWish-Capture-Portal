@@ -2,8 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
+import html2canvas from "html2canvas";
 
 interface MomentData {
   englishName: string;
@@ -27,6 +28,8 @@ export default function ResultPage() {
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [showQrOverlay, setShowQrOverlay] = useState(false);
+  const [savingScreenshot, setSavingScreenshot] = useState(false);
+  const screenshotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,6 +101,56 @@ export default function ResultPage() {
       // You could add a toast notification here
     } catch (err) {
       console.error("Failed to copy URL:", err);
+    }
+  };
+
+  const handleSaveScreenshot = async () => {
+    if (!screenshotRef.current) return;
+    
+    setSavingScreenshot(true);
+    try {
+      const canvas = await html2canvas(screenshotRef.current, {
+        backgroundColor: '#0a0a0f',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+      });
+      
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      // Try using Web Share API with file (works on iOS and Android)
+      if (navigator.share && navigator.canShare) {
+        try {
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          const file = new File([blob], 'tzu-chi-moment.png', { type: 'image/png' });
+          
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'My Tzu Chi Moment'
+            });
+            return;
+          }
+        } catch (shareErr) {
+          console.log('Share failed, falling back to download:', shareErr);
+        }
+      }
+      
+      // Fallback: Direct download (works on all browsers)
+      const link = document.createElement('a');
+      link.download = 'tzu-chi-moment.png';
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (err) {
+      console.error('Screenshot failed:', err);
+      alert('Failed to save screenshot. Please try again.');
+    } finally {
+      setSavingScreenshot(false);
     }
   };
 
@@ -197,74 +250,44 @@ export default function ResultPage() {
 
       {data && (
         <section className="relative z-10 mt-2 flex flex-1 flex-col gap-4 rounded-xl p-4" style={{ backgroundColor: 'rgba(10,10,15,0.8)', border: '1px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.1)' }}>
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg" style={{ border: '2px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.2)' }}>
-            <img
-              src={
-                data.photoAssetUrl.startsWith("http")
-                  ? data.photoAssetUrl
-                  : `${window.location.origin}${data.photoAssetUrl}`
-              }
-              alt="Processed memorable moment"
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="rounded-md px-3 py-3 text-center text-sm" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.2)' }}>
-            <p className="font-medium" style={{ color: '#00A3E0' }}>Jing Si Aphorism</p>
-            {data.aphorism.split(" / ").map((line, index) => (
-              <p key={index} className="mt-1 italic" style={{ color: '#6DD5ED' }}>
-                &ldquo;{line}&rdquo;
-              </p>
-            ))}
-          </div>
-
-          {data.qrCodeUrl && (
-            <div className="flex flex-col items-center gap-2">
+          {/* Screenshot capture area - contains photo, aphorism, and QR code */}
+          <div ref={screenshotRef} className="flex flex-col gap-4 p-4 rounded-xl" style={{ backgroundColor: '#0a0a0f' }}>
+            <div className="relative w-full overflow-hidden rounded-lg" style={{ border: '2px solid rgba(0,163,224,0.3)', boxShadow: '0 0 20px rgba(0,163,224,0.2)' }}>
               <img
-                src={data.qrCodeUrl}
-                alt="QR code to download photo"
-                className="h-40 w-40 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => setShowQrOverlay(true)}
-                title="Tap to enlarge"
+                src={
+                  data.photoAssetUrl.startsWith("http")
+                    ? data.photoAssetUrl
+                    : `${window.location.origin}${data.photoAssetUrl}`
+                }
+                alt="Processed memorable moment"
+                className="w-full h-auto"
               />
-              <p className="text-center text-xs" style={{ color: 'rgba(109,213,237,0.7)' }}>
-                Ask event staff to scan this QR code or take a screenshot of
-                it. It links directly to this page.
-              </p>
-              <div className="mt-2 w-full">
-                <div className="flex items-center gap-2 rounded-md px-3 py-2" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.3)' }}>
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}${data.qrCodeUrl}`}
-                    className="flex-1 bg-transparent text-xs outline-none"
-                    style={{ color: '#6DD5ED' }}
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                  />
-                  <button
-                    onClick={copyUrlToClipboard}
-                    className="rounded px-2 py-1 text-xs transition-all hover:scale-110"
-                    style={{ color: '#00A3E0' }}
-                    title="Copy URL"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="h-4 w-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
             </div>
-          )}
+            <div className="rounded-md px-3 py-3 text-center text-sm" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.2)' }}>
+              <p className="font-medium" style={{ color: '#00A3E0' }}>Jing Si Aphorism</p>
+              {data.aphorism.split(" / ").map((line, index) => (
+                <p key={index} className="mt-1 italic" style={{ color: '#6DD5ED' }}>
+                  &ldquo;{line}&rdquo;
+                </p>
+              ))}
+            </div>
+
+            {data.qrCodeUrl && (
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src={data.qrCodeUrl}
+                  alt="QR code to download photo"
+                  className="h-40 w-40 cursor-pointer hover:opacity-80 transition-opacity bg-white p-2 rounded"
+                  onClick={() => setShowQrOverlay(true)}
+                  title="Tap to enlarge"
+                />
+                <p className="text-center text-xs" style={{ color: 'rgba(109,213,237,0.7)' }}>
+                  Scan QR code to view this page
+                </p>
+              </div>
+            )}
+          </div>
+          {/* End screenshot capture area */}
 
           <div className="flex flex-col gap-2">
             {data.email && (
@@ -334,6 +357,57 @@ export default function ResultPage() {
                 )}
               </div>
             )}
+
+            <button
+              onClick={handleSaveScreenshot}
+              disabled={savingScreenshot}
+              className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', boxShadow: '0 0 20px rgba(139,92,246,0.3)' }}
+            >
+              {savingScreenshot ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                    />
+                  </svg>
+                  Save Screenshot
+                </>
+              )}
+            </button>
 
             {data.phoneNumber && resultUrl && (
               <button
