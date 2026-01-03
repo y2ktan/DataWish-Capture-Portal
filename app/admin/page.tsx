@@ -261,9 +261,13 @@ export default function AdminPage() {
           </p>
         )}
         <ul className="divide-y divide-slate-100">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <li key={row.id} className="py-3">
               <div className="flex items-start justify-between gap-2">
+                {/* Row number */}
+                <span className="flex-shrink-0 w-8 text-sm font-medium text-slate-400">
+                  {index + 1}.
+                </span>
                 {/* Clickable text area for editing */}
                 <div
                   className="flex-1 cursor-pointer text-sm"
