@@ -14,6 +14,7 @@
   "dependencies": {
     "@imgly/background-removal-node": "^1.4.3",
     "@napi-rs/canvas": "^0.1.84",
+    "@types/pdfkit": "^0.17.4",
     "@types/three": "^0.181.0",
     "better-sqlite3": "^12.5.0",
     "chokidar": "^5.0.0",
@@ -21,6 +22,7 @@
     "html5-qrcode": "^2.3.8",
     "next": "^14.2.33",
     "nodemailer": "^7.0.11",
+    "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",

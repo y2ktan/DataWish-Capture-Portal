@@ -125,6 +125,33 @@ export default function AdminPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await fetch("/api/admin/export-pdf", {
+        headers: {
+          "x-admin-key": passwordInput
+        }
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Failed to download PDF.");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `registered-users-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected error occurred.";
+      setError(message);
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!editing) return;
     try {
@@ -217,6 +244,13 @@ export default function AdminPage() {
           >
             Themes
           </Link>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="rounded-md border border-green-500 bg-green-50 px-3 py-1.5 text-xs text-green-700 hover:bg-green-100"
+          >
+            Download CSV
+          </button>
         </div>
         <h1 className="text-center text-2xl font-semibold text-tzuchiBlue">
           Admin – Records
