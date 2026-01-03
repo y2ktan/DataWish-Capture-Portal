@@ -130,7 +130,20 @@ function TreePageInner() {
 });
 
 
+        const FIREFLY_LIMIT = 100;
+        
         const spawnFirefly = (targetName: string) => {
+            // Remove oldest firefly if limit reached
+            if (fireflies.length >= FIREFLY_LIMIT) {
+                const oldest = fireflies[0];
+                scene.remove(oldest.obj);
+                if (oldest.label && oldest.label.parentNode) {
+                    oldest.label.parentNode.removeChild(oldest.label);
+                }
+                fireflies.shift();
+                console.log(`[Tree] Removed oldest firefly to maintain limit of ${FIREFLY_LIMIT}`);
+            }
+            
             const { group, glare, outerGlare, light, wingL, wingR, abdomen, abdomenMat } = createFireflyObject(glareMat);
             scene.add(group);
 
