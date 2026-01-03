@@ -241,19 +241,20 @@ function TreePageInner() {
                     if (isFlying && ff.target.y < 10) ff.target.y = 10;
                 }
 
-                // 2. Max distance check (squared to avoid sqrt)
+                // 2. Screen edge wrap - when firefly goes too far, teleport to opposite side
+                const maxDist = 100; // Allow flying further before wrap
                 const dx = pos.x - treeCenter.x;
                 const dy = pos.y - treeCenter.y;
                 const dz = pos.z - treeCenter.z;
                 const distSqToCenter = dx * dx + dy * dy + dz * dz;
                 
-                if (distSqToCenter > 6400) { // 80^2
-                    _dir.set(-dx, -dy, -dz).normalize();
-                    const pull = ff.speed * delta * 2;
-                    pos.x += _dir.x * pull;
-                    pos.y += _dir.y * pull;
-                    pos.z += _dir.z * pull;
-                    if (Math.random() > 0.95) setRandomFlightTarget(ff);
+                if (distSqToCenter > maxDist * maxDist) {
+                    // Wrap to opposite side of tree and set target back to tree area
+                    pos.x = -pos.x * 0.3;
+                    pos.z = -pos.z * 0.3;
+                    pos.y = 15 + Math.random() * 25; // Reset height
+                    setRandomFlightTarget(ff);
+                    ff._stuckFrames = 0;
                 }
 
                 if (state === 'FLYING') {
@@ -287,6 +288,9 @@ function TreePageInner() {
                     pos.x += _dir.x * move;
                     pos.y += _dir.y * move;
                     pos.z += _dir.z * move;
+                    
+                    // Rotate firefly to face movement direction (always fly forward)
+                    ff.obj.rotation.y = Math.atan2(_dir.x, _dir.z);
 
                     // Check target reached (squared)
                     const tdx = pos.x - ff.target.x;
@@ -316,9 +320,14 @@ function TreePageInner() {
                         ff._approachStartTime = undefined;
                     } else {
                         const invDist = 1 / Math.sqrt(distSq);
-                        pos.x += adx * invDist * moveStep;
+                        const stepX = adx * invDist * moveStep;
+                        const stepZ = adz * invDist * moveStep;
+                        pos.x += stepX;
                         pos.y += ady * invDist * moveStep;
-                        pos.z += adz * invDist * moveStep;
+                        pos.z += stepZ;
+                        
+                        // Rotate firefly to face movement direction
+                        ff.obj.rotation.y = Math.atan2(adx, adz);
                     }
                     
                     if (approachDur > 8) {
