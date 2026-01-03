@@ -716,7 +716,7 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
     // z move to left (further from tree)
     // x move to front (closer to camera)
     const hillockData = [
-        { x: 38, z: -30, radius: 28, height: 9, pagodaScale: 35 },
+        { x: 38, z: -30, radius: 28, height: 4, pagodaScale: 35 },
     ];
 
     const loader = new GLTFLoader();
