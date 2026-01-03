@@ -191,10 +191,16 @@ function TreePageInner() {
             updateRenderer(containerRef.current.clientWidth, containerRef.current.clientHeight);
         };
 
+        // Reusable vectors - created once, reused every frame (CPU/memory optimization)
+        const _dir = new THREE.Vector3();
+        const _tempV = new THREE.Vector3();
+        let frameCount = 0;
+        
         const animate = () => {
             animationId = requestAnimationFrame(animate);
             const delta = clock.getDelta();
             const time = clock.getElapsedTime();
+            frameCount++;
 
             // Boat rotation (anticlockwise)
             if (boat) {
@@ -216,9 +222,7 @@ function TreePageInner() {
                 updateSwans(swanGroup, time);
             }
 
-            // Reusable vectors (CPU optimization - avoid GC pressure)
-            const _dir = new THREE.Vector3();
-            const _tempV = new THREE.Vector3();
+            // Cache screen dimensions
             const _screenW = dimensionsRef.current.width;
             const _screenH = dimensionsRef.current.height;
             
@@ -227,12 +231,16 @@ function TreePageInner() {
                 const pos = ff.obj.position;
                 const state = ff.state;
                 
-                // Smooth pulsing glow and abdomen color shift
-                updateFireflyGlow(ff, time);
+                // Smooth pulsing glow - update every 3rd frame (visual effect doesn't need 60fps)
+                if ((frameCount + i) % 3 === 0) {
+                    updateFireflyGlow(ff, time);
+                }
                 
                 // Wing flutter animation
                 const isFlying = state === 'FLYING' || state === 'APPROACHING';
-                updateFireflyWings(ff, time, isFlying);
+                if (isFlying) {
+                    updateFireflyWings(ff, time, true);
+                }
 
                 // Boundary checks
                 // 1. Water level check
@@ -350,18 +358,18 @@ function TreePageInner() {
                     ff.visibleTimer -= delta;
                 }
 
-                // Project to screen (reuse _tempV)
-                ff.obj.getWorldPosition(_tempV);
-                _tempV.project(camera);
+                // Update labels every 2nd frame to reduce DOM operations (GPU/CPU optimization)
+                if (frameCount % 2 === 0) {
+                    ff.obj.getWorldPosition(_tempV);
+                    _tempV.project(camera);
 
-                const x = (_tempV.x * 0.5 + 0.5) * _screenW;
-                const y = (_tempV.y * -0.5 + 0.5) * _screenH;
-                const isOffScreen = Math.abs(_tempV.z) > 1 || x < -50 || x > _screenW + 50 || y < -50 || y > _screenH + 50;
+                    const x = (_tempV.x * 0.5 + 0.5) * _screenW;
+                    const y = (_tempV.y * -0.5 + 0.5) * _screenH;
+                    const isOffScreen = Math.abs(_tempV.z) > 1 || x < -50 || x > _screenW + 50 || y < -50 || y > _screenH + 50;
 
-                // Keep new fireflies visible for 30s, then fade when offscreen
-                // Position label below firefly with 12px gap (firefly ~10px + 2px min gap)
-                const opacity = ff.visibleTimer > 0 ? '1' : (isOffScreen ? '0.5' : '1');
-                ff.label.style.cssText = `opacity:${opacity};transform:translate(-50%,0) translate(${x}px,${y + 12}px)`;
+                    const opacity = ff.visibleTimer > 0 ? '1' : (isOffScreen ? '0.5' : '1');
+                    ff.label.style.cssText = `opacity:${opacity};transform:translate(-50%,0) translate(${x}px,${y + 12}px)`;
+                }
             }
                 // Pulse the tree and make it brighter when zoomed out
                 const pulse = Math.sin(time * 1.5) * 0.2 + 0.6; // 0.4 to 0.8
