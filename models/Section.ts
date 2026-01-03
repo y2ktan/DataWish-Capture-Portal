@@ -137,6 +137,7 @@ export class Section {
       SELECT DISTINCT COALESCE(m.chineseName, m.englishName) as displayName
       FROM section_checkins sc
       JOIN moments m ON sc.momentId = m.id
+      WHERE sc.isFireflyRelease = 1
       ORDER BY sc.checkedInAt DESC
     `);
     const rows = stmt.all() as { displayName: string }[];
