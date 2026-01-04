@@ -28,15 +28,19 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") ?? "";
+    const page = parseInt(searchParams.get("page") ?? "1", 10);
+    const limit = parseInt(searchParams.get("limit") ?? "50", 10);
 
     const query = q
       ? { englishName: q, phoneNumber: q }
       : undefined;
 
-    const results = Moment.findMany(query);
+    const results = Moment.findMany(query, { page, limit });
+    const totalCount = Moment.count(query);
+    const totalPages = Math.ceil(totalCount / limit);
 
-    return NextResponse.json(
-      results.map((m) => ({
+    return NextResponse.json({
+      data: results.map((m) => ({
         id: m.id.toString(),
         englishName: m.englishName,
         chineseName: m.chineseName,
@@ -47,8 +51,14 @@ export async function GET(req: NextRequest) {
         downloadToken: m.downloadToken,
         postUrl: `/result/${m.downloadToken}`,
         sections: Section.getCheckinsByMoment(m.id),
-      }))
-    );
+      })),
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     console.error("Error in GET /api/admin/moments:", error);
     const errorMessage =

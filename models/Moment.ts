@@ -85,20 +85,45 @@ export class Moment {
     return stmt.get(token) as MomentRow | null;
   }
 
-  static findMany(query?: { englishName?: string; phoneNumber?: string }): MomentRow[] {
+  static findMany(query?: { englishName?: string; phoneNumber?: string }, options?: { page?: number; limit?: number }): MomentRow[] {
     const db = getDatabase();
+    const limit = options?.limit ?? 50;
+    const offset = ((options?.page ?? 1) - 1) * limit;
+    
     if (query?.englishName || query?.phoneNumber) {
       const searchTerm = `%${(query.englishName || query.phoneNumber || "").toLowerCase()}%`;
       const stmt = db.prepare(`
         SELECT * FROM moments 
         WHERE LOWER(englishName) LIKE ? OR LOWER(phoneNumber) LIKE ?
         ORDER BY createdAt DESC
-        LIMIT 50
+        LIMIT ? OFFSET ?
       `);
-      return stmt.all(searchTerm, searchTerm) as MomentRow[];
+      return stmt.all(searchTerm, searchTerm, limit, offset) as MomentRow[];
     }
-    const stmt = db.prepare("SELECT * FROM moments ORDER BY createdAt DESC LIMIT 50");
+    const stmt = db.prepare("SELECT * FROM moments ORDER BY createdAt DESC LIMIT ? OFFSET ?");
+    return stmt.all(limit, offset) as MomentRow[];
+  }
+
+  static findAll(): MomentRow[] {
+    const db = getDatabase();
+    const stmt = db.prepare("SELECT * FROM moments ORDER BY createdAt DESC");
     return stmt.all() as MomentRow[];
+  }
+
+  static count(query?: { englishName?: string; phoneNumber?: string }): number {
+    const db = getDatabase();
+    if (query?.englishName || query?.phoneNumber) {
+      const searchTerm = `%${(query.englishName || query.phoneNumber || "").toLowerCase()}%`;
+      const stmt = db.prepare(`
+        SELECT COUNT(*) as count FROM moments 
+        WHERE LOWER(englishName) LIKE ? OR LOWER(phoneNumber) LIKE ?
+      `);
+      const result = stmt.get(searchTerm, searchTerm) as { count: number };
+      return result.count;
+    }
+    const stmt = db.prepare("SELECT COUNT(*) as count FROM moments");
+    const result = stmt.get() as { count: number };
+    return result.count;
   }
 
   static updateById(

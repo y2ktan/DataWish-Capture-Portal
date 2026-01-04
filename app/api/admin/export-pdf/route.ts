@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Get all moments with their check-in info
-    const moments = Moment.findMany();
+    // Get all moments with their check-in info (no limit for CSV export)
+    const moments = Moment.findAll();
     
     // Build CSV content
     const headers = ["#", "English Name", "Chinese Name", "Phone", "Postcode", "Email", "Sections", "Created At"];

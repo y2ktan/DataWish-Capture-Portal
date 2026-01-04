@@ -44,6 +44,11 @@ export default function AdminPage() {
   const [releaseFirefly, setReleaseFirefly] = useState(true);
   const [checkinLoading, setCheckinLoading] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   useEffect(() => {
     if (authorized) {
       handleSearch();
@@ -78,11 +83,11 @@ export default function AdminPage() {
     }
   };
 
-  const handleSearch = async () => {
+  const handleSearch = async (page: number = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/moments?q=${encodeURIComponent(query)}`, {
+      const res = await fetch(`/api/admin/moments?q=${encodeURIComponent(query)}&page=${page}&limit=50`, {
         headers: {
           "x-admin-key": passwordInput
         }
@@ -91,9 +96,11 @@ export default function AdminPage() {
         const json = await res.json().catch(() => null);
         throw new Error(json?.error || "Failed to load records.");
       }
-      // The API is confirmed to return `postUrl`
-      const json = (await res.json()) as AdminMomentRow[]; 
-      setRows(json);
+      const json = await res.json();
+      setRows(json.data as AdminMomentRow[]);
+      setCurrentPage(json.pagination.page);
+      setTotalPages(json.pagination.totalPages);
+      setTotalCount(json.pagination.totalCount);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unexpected error occurred.";
@@ -348,7 +355,7 @@ export default function AdminPage() {
           />
           <button
             type="button"
-            onClick={handleSearch}
+            onClick={() => handleSearch(1)}
             className="inline-flex items-center justify-center rounded-md bg-tzuchiBlue px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
           >
             Search
@@ -369,9 +376,9 @@ export default function AdminPage() {
           {rows.map((row, index) => (
             <li key={row.id} className="py-3">
               <div className="flex items-start justify-between gap-2">
-                {/* Row number */}
+                {/* Row number - show global index based on pagination */}
                 <span className="flex-shrink-0 w-8 text-sm font-medium text-slate-400">
-                  {index + 1}.
+                  {(currentPage - 1) * 50 + index + 1}.
                 </span>
                 {/* Clickable text area for editing */}
                 <div
@@ -449,6 +456,52 @@ export default function AdminPage() {
             </li>
           ))}
         </ul>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+            <p className="text-xs text-slate-500">
+              Showing {(currentPage - 1) * 50 + 1} - {Math.min(currentPage * 50, totalCount)} of {totalCount} records
+            </p>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => handleSearch(1)}
+                disabled={currentPage === 1}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                First
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSearch(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              <span className="px-2 py-1 text-xs text-slate-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSearch(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSearch(totalPages)}
+                disabled={currentPage === totalPages}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {editing && (
