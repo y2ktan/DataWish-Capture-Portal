@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Moment } from "@/models/Moment";
 import { Section } from "@/models/Section";
 import { rateLimit } from "../../utils/rateLimit";
+import { broadcastNewFirefly } from "@/lib/sseManager";
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
 
@@ -99,6 +100,75 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in PUT /api/admin/moments:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/admin/moments - Manual check-in by admin
+export async function POST(req: NextRequest) {
+  try {
+    if (!checkAuth(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body." },
+        { status: 400 }
+      );
+    }
+
+    const { momentId, sectionId, releaseFirefly } = body;
+
+    if (!momentId || !sectionId) {
+      return NextResponse.json(
+        { error: "momentId and sectionId are required" },
+        { status: 400 }
+      );
+    }
+
+    // Verify moment exists
+    const moment = Moment.findOneById(Number(momentId));
+    if (!moment) {
+      return NextResponse.json({ error: "Moment not found" }, { status: 404 });
+    }
+
+    // Verify section exists
+    const section = Section.findOneById(Number(sectionId));
+    if (!section) {
+      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    }
+
+    // Create check-in
+    const checkin = Section.checkIn(moment.id, section.id);
+
+    // If releaseFirefly is true, also release the firefly
+    if (releaseFirefly) {
+      Section.releaseFirefly(moment.id, section.id);
+      // Broadcast to SSE
+      const displayName = moment.chineseName || moment.englishName;
+      broadcastNewFirefly(displayName);
+    }
+
+    return NextResponse.json({
+      success: true,
+      checkin,
+      section,
+      moment: {
+        id: moment.id,
+        englishName: moment.englishName
+      }
+    });
+  } catch (error) {
+    console.error("Error in POST /api/admin/moments:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(

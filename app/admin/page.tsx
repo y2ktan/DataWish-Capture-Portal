@@ -23,6 +23,11 @@ interface AdminMomentRow {
   sections: SectionCheckin[];
 }
 
+interface SectionOption {
+  id: number;
+  name: string;
+}
+
 export default function AdminPage() {
   const [passwordInput, setPasswordInput] = useState("");
   const [authorized, setAuthorized] = useState(false);
@@ -33,13 +38,34 @@ export default function AdminPage() {
   const [rows, setRows] = useState<AdminMomentRow[]>([]);
 
   const [editing, setEditing] = useState<AdminMomentRow | null>(null);
+  const [checkinModal, setCheckinModal] = useState<AdminMomentRow | null>(null);
+  const [sections, setSections] = useState<SectionOption[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+  const [releaseFirefly, setReleaseFirefly] = useState(true);
+  const [checkinLoading, setCheckinLoading] = useState(false);
 
   useEffect(() => {
     if (authorized) {
       handleSearch();
+      fetchSections();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorized]);
+
+  const fetchSections = async () => {
+    try {
+      const res = await fetch("/api/sections");
+      if (res.ok) {
+        const data = await res.json();
+        setSections(data);
+        if (data.length > 0) {
+          setSelectedSectionId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch sections:", err);
+    }
+  };
 
   const handleAuth = () => {
     // For MVP, simple in-browser key comparison via NEXT_PUBLIC_ADMIN_KEY.
@@ -183,6 +209,51 @@ export default function AdminPage() {
       const message =
         err instanceof Error ? err.message : "Unexpected error occurred.";
       setError(message);
+    }
+  };
+
+  const handleManualCheckin = async () => {
+    if (!checkinModal || !selectedSectionId) return;
+    setCheckinLoading(true);
+    try {
+      const res = await fetch("/api/admin/moments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": passwordInput
+        },
+        body: JSON.stringify({
+          momentId: checkinModal.id,
+          sectionId: selectedSectionId,
+          releaseFirefly
+        })
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error || "Failed to check in.");
+      }
+      // Update local state to add the new section
+      const sectionName = sections.find(s => s.id === selectedSectionId)?.name || "Unknown";
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === checkinModal.id
+            ? {
+                ...r,
+                sections: [
+                  ...r.sections.filter(s => s.sectionId !== selectedSectionId),
+                  { id: 0, sectionId: selectedSectionId, sectionName, isFireflyRelease: releaseFirefly ? 1 : 0 }
+                ]
+              }
+            : r
+        )
+      );
+      setCheckinModal(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected error occurred.";
+      setError(message);
+    } finally {
+      setCheckinLoading(false);
     }
   };
 
@@ -346,8 +417,18 @@ export default function AdminPage() {
                   )}
                 </div>
                 
-                {/* Button Group: View Photo & Delete */}
+                {/* Button Group: Check In, View Photo & Delete */}
                 <div className="flex gap-2 flex-shrink-0"> 
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCheckinModal(row);
+                      }}
+                      className="rounded-md border border-green-500 bg-green-50 px-2 py-1 text-xs text-green-700 hover:bg-green-100"
+                    >
+                      Check In
+                    </button>
                     <a
                       href={row.postUrl}
                       target="_blank"
@@ -424,6 +505,67 @@ export default function AdminPage() {
                 className="rounded-md bg-tzuchiBlue px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-800"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Check-in Modal */}
+      {checkinModal && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg">
+            <h2 className="text-sm font-semibold text-tzuchiBlue">
+              Manual Check-in
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Check in <strong>{checkinModal.englishName}</strong> to a section
+            </p>
+            <div className="mt-3 flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Select Section
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+                  value={selectedSectionId ?? ""}
+                  onChange={(e) => setSelectedSectionId(Number(e.target.value))}
+                >
+                  {sections.map((sec) => (
+                    <option key={sec.id} value={sec.id}>
+                      {sec.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="releaseFirefly"
+                  checked={releaseFirefly}
+                  onChange={(e) => setReleaseFirefly(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-tzuchiBlue focus:ring-tzuchiBlue"
+                />
+                <label htmlFor="releaseFirefly" className="text-xs text-slate-700">
+                  Release firefly (show on tree)
+                </label>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCheckinModal(null)}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleManualCheckin}
+                disabled={checkinLoading || !selectedSectionId}
+                className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {checkinLoading ? "Checking in..." : "Check In"}
               </button>
             </div>
           </div>
