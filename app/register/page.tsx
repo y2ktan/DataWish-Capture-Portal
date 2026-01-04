@@ -400,6 +400,41 @@ export default function RegisterPage() {
     setStep("capture");
   };
 
+  const handleSkipPhoto = async () => {
+    setError(null);
+    if (!englishName.trim() || !phoneNumber.trim()) {
+      setError("English Name and Phone Number are required.");
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms & Conditions.");
+      return;
+    }
+    setStep("submitting");
+    try {
+      const res = await fetch("/api/moments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "skip-photo": "true" },
+        body: JSON.stringify({
+          englishName: englishName.trim(),
+          chineseName: chineseName.trim() || undefined,
+          phoneNumber: formatPhoneNumber(phoneNumber, countryCode),
+          postcode: postcode.trim() || undefined
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to process.");
+      }
+      const data = (await res.json()) as { token: string };
+      router.push(`/result/${data.token}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unexpected error occurred.";
+      setError(message);
+      setStep("form");
+    }
+  };
+
   const handleTakePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
@@ -645,14 +680,25 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={!agreedToTerms}
-            className="mt-2 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            style={{ background: agreedToTerms ? 'linear-gradient(135deg, #0066B3, #00A3E0)' : 'rgba(100,100,100,0.5)', boxShadow: agreedToTerms ? '0 0 20px rgba(0,163,224,0.4)' : 'none' }}
-          >
-            Continue to Camera
-          </button>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="submit"
+              disabled={!agreedToTerms}
+              className="flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              style={{ background: agreedToTerms ? 'linear-gradient(135deg, #0066B3, #00A3E0)' : 'rgba(100,100,100,0.5)', boxShadow: agreedToTerms ? '0 0 20px rgba(0,163,224,0.4)' : 'none' }}
+            >
+              Continue to Camera
+            </button>
+            <button
+              type="button"
+              onClick={handleSkipPhoto}
+              disabled={!agreedToTerms}
+              className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              style={{ border: '1px solid rgba(0,163,224,0.5)', color: agreedToTerms ? '#00A3E0' : 'rgba(100,100,100,0.8)', backgroundColor: 'rgba(0,163,224,0.1)' }}
+            >
+              Submit Now
+            </button>
+          </div>
         </form>
       )}
 

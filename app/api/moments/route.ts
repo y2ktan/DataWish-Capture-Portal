@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const forwarded = req.headers.get("x-forwarded-for");
     const skipBackground = req.headers.get("skip-background") === "true";
+    const skipPhoto = req.headers.get("skip-photo") === "true";
     const ip = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") ?? "unknown";
     
     if (!checkRateLimit(ip)) {
@@ -65,43 +66,53 @@ export async function POST(req: NextRequest) {
       chineseName?: string;
       phoneNumber: string;
       postcode?: string;
-      imageDataUrl: string;
+      imageDataUrl?: string;
     } = body;
 
-    if (!englishName || !phoneNumber || !imageDataUrl) {
+    if (!englishName || !phoneNumber) {
       return NextResponse.json(
-        { error: "englishName, phoneNumber and image are required." },
+        { error: "englishName and phoneNumber are required." },
         { status: 400 }
       );
     }
 
-    // Validate image data URL format and size
-    const dataUrlMatch = imageDataUrl.match(/^data:image\/(jpeg|png|jpg);base64,(.+)$/);
-    if (!dataUrlMatch) {
-      return NextResponse.json(
-        { error: "Invalid image format. Only JPEG and PNG are allowed." },
-        { status: 400 }
-      );
+    // If not skipping photo, validate image
+    if (!skipPhoto) {
+      if (!imageDataUrl) {
+        return NextResponse.json(
+          { error: "Image is required." },
+          { status: 400 }
+        );
+      }
+
+      // Validate image data URL format and size
+      const dataUrlMatch = imageDataUrl.match(/^data:image\/(jpeg|png|jpg);base64,(.+)$/);
+      if (!dataUrlMatch) {
+        return NextResponse.json(
+          { error: "Invalid image format. Only JPEG and PNG are allowed." },
+          { status: 400 }
+        );
+      }
+
+      // Check file size (base64 is ~33% larger than binary, so 5MB binary ≈ 6.67MB base64)
+      const base64Data = dataUrlMatch[2];
+      const estimatedSize = (base64Data.length * 3) / 4;
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (estimatedSize > maxSize) {
+        return NextResponse.json(
+          { error: "Image too large. Maximum size is 5MB." },
+          { status: 400 }
+        );
+      }
     }
 
-    // Check file size (base64 is ~33% larger than binary, so 5MB binary ≈ 6.67MB base64)
-    const base64Data = dataUrlMatch[2];
-    const estimatedSize = (base64Data.length * 3) / 4;
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (estimatedSize > maxSize) {
-      return NextResponse.json(
-        { error: "Image too large. Maximum size is 5MB." },
-        { status: 400 }
-      );
-    }
-
-    const processed = await processImageWithAphorism(imageDataUrl, undefined, skipBackground);
+    const processed = await processImageWithAphorism(imageDataUrl || null, undefined, skipBackground, skipPhoto);
 
     const downloadToken = crypto.randomBytes(16).toString("hex");
 
-    // Save raw image to file system
+    // Save raw image to file system (only if photo was taken)
     const { saveImageFromDataUrl, saveQRCodeFromBuffer } = await import("@/lib/fileStorage");
-    const rawImageUrl = saveImageFromDataUrl(imageDataUrl);
+    const rawImageUrl = imageDataUrl ? saveImageFromDataUrl(imageDataUrl) : null;
 
     // Generate and save QR code
     const QRCode = await import("qrcode");
@@ -115,7 +126,7 @@ export async function POST(req: NextRequest) {
       chineseName,
       phoneNumber,
       postcode,
-      rawImageDataUrl: rawImageUrl,
+      rawImageDataUrl: rawImageUrl || "",
       photoAssetUrl: processed.finalImageUrl,
       qrCodeUrl,
       aphorism: processed.aphorism,

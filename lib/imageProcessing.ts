@@ -270,15 +270,31 @@ function dataUrlToBuffer(dataUrl: string): Buffer {
  * 4. Save and return final image URL
  */
 export async function processImageWithAphorism(
-  rawImageDataUrl: string,
+  rawImageDataUrl: string | null,
   backgroundUrl?: string,
-  skipBackground?: boolean
+  skipBackground?: boolean,
+  skipPhoto?: boolean
 ): Promise<ProcessedImageResult> {
   const aphorism = getRandomAphorism();
   const aphorismDisplay = `${aphorism.chinese} / ${aphorism.english}`;
-  const imageBuffer = dataUrlToBuffer(rawImageDataUrl);
 
   try {
+    // If skipping photo, just use a random background with text overlay
+    if (skipPhoto || !rawImageDataUrl) {
+      console.log("Processing with random background only (no user photo)...");
+      const bgPath = resolveBackgroundPath(backgroundUrl);
+      if (!bgPath) {
+        throw new Error("No background images available");
+      }
+      const finalBuffer = await createBackgroundOnlyImage(bgPath, aphorism);
+      return {
+        finalImageUrl: saveProcessedImage(finalBuffer),
+        aphorism: aphorismDisplay,
+      };
+    }
+
+    const imageBuffer = dataUrlToBuffer(rawImageDataUrl);
+
     // 1. Determine if we can/should use a background
     const bgPath = !skipBackground ? resolveBackgroundPath(backgroundUrl) : null;
 
@@ -301,8 +317,11 @@ export async function processImageWithAphorism(
 
   } catch (error) {
     console.error("Image processing failed, falling back to raw save:", error);
+    if (!rawImageDataUrl) {
+      throw error; // Can't fallback without an image
+    }
     return {
-      finalImageUrl: saveRawFallback(imageBuffer),
+      finalImageUrl: saveRawFallback(dataUrlToBuffer(rawImageDataUrl)),
       aphorism: aphorismDisplay,
     };
   }
@@ -310,6 +329,31 @@ export async function processImageWithAphorism(
 
 /** * HELPER FUNCTIONS to keep the main logic clean
  */
+
+/**
+ * Create an image with just the background and text overlay (no subject)
+ */
+async function createBackgroundOnlyImage(
+  backgroundPath: string,
+  aphorism: BilingualAphorism
+): Promise<Buffer> {
+  const sharp = await getSharp();
+
+  // Process Background
+  const background = sharp(backgroundPath).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, {
+    fit: "cover",
+    position: "center"
+  });
+
+  // Create text overlay
+  const textOverlay = await createTextOverlay(aphorism);
+
+  // Composite background with text
+  return await background
+    .composite([{ input: textOverlay, gravity: "northwest" }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
 
 function resolveBackgroundPath(backgroundUrl?: string): string | null {
   const targetUrl = backgroundUrl || getRandomBackground();
