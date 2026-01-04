@@ -172,8 +172,14 @@ function TreePageInner() {
                 target: new THREE.Vector3(),
                 timer: 0,
                 speed: 8 + Math.random() * 6,
-                visibleTimer: 30  // Keep visible for 30 seconds
+                visibleTimer: 30,  // Keep visible for 30 seconds
+                newTimer: 20,  // Highlight period: bigger & brighter for 20s
+                baseScale: 1  // Store base scale for transition
             };
+            // Start with enlarged size for new firefly (4x normal)
+            group.scale.setScalar(4);
+            glare.scale.setScalar(24);  // 4x normal (6)
+            outerGlare.scale.setScalar(48);  // 4x normal (12)
             fireflies.push(ff);
             setRandomFlightTarget(ff);
         };
@@ -356,6 +362,26 @@ function TreePageInner() {
                 // Count down visibility timer
                 if (ff.visibleTimer > 0) {
                     ff.visibleTimer -= delta;
+                }
+
+                // Handle new firefly highlight transition (bigger & brighter for 20s)
+                if (ff.newTimer > 0) {
+                    ff.newTimer -= delta;
+                    if (ff.newTimer <= 0) {
+                        // Transition to normal size
+                        ff.obj.scale.setScalar(1);
+                        ff.glare.scale.setScalar(6);
+                        ff.outerGlare.scale.setScalar(12);
+                    } else if (ff.newTimer < 3) {
+                        // Smooth transition in last 3 seconds
+                        const t = ff.newTimer / 3; // 1 -> 0
+                        const scale = 1 + t * 3; // 4 -> 1
+                        const glareScale = 6 + t * 18; // 24 -> 6
+                        const outerScale = 12 + t * 36; // 48 -> 12
+                        ff.obj.scale.setScalar(scale);
+                        ff.glare.scale.setScalar(glareScale);
+                        ff.outerGlare.scale.setScalar(outerScale);
+                    }
                 }
 
                 // Update labels every 2nd frame to reduce DOM operations (GPU/CPU optimization)
