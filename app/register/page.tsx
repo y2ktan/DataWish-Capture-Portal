@@ -687,7 +687,7 @@ export default function RegisterPage() {
               className="flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               style={{ background: agreedToTerms ? 'linear-gradient(135deg, #0066B3, #00A3E0)' : 'rgba(100,100,100,0.5)', boxShadow: agreedToTerms ? '0 0 20px rgba(0,163,224,0.4)' : 'none' }}
             >
-              Continue to Camera
+              Take a selfie
             </button>
             <button
               type="button"
@@ -696,7 +696,7 @@ export default function RegisterPage() {
               className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               style={{ border: '1px solid rgba(0,163,224,0.5)', color: agreedToTerms ? '#00A3E0' : 'rgba(100,100,100,0.8)', backgroundColor: 'rgba(0,163,224,0.1)' }}
             >
-              Submit Now
+              Skip & Submit
             </button>
           </div>
         </form>

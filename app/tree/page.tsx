@@ -173,7 +173,7 @@ function TreePageInner() {
                 timer: 0,
                 speed: 8 + Math.random() * 6,
                 visibleTimer: 30,  // Keep visible for 30 seconds
-                newTimer: 20,  // Highlight period: bigger & brighter for 20s
+                newTimer: 30,  // Highlight period: bigger & brighter for 30s
                 baseScale: 1  // Store base scale for transition
             };
             // Start with enlarged size for new firefly (4x normal)
@@ -364,7 +364,7 @@ function TreePageInner() {
                     ff.visibleTimer -= delta;
                 }
 
-                // Handle new firefly highlight transition (bigger & brighter for 20s)
+                // Handle new firefly highlight transition (bigger & brighter for 30s)
                 if (ff.newTimer > 0) {
                     ff.newTimer -= delta;
                     if (ff.newTimer <= 0) {
