@@ -750,7 +750,7 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
         // 2. Load and Light the Pagoda
         loader.load(
-            '/assets/traditional+temple+3d+model2.glb',
+            '/assets/pagoda+3d+model.glb',
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
