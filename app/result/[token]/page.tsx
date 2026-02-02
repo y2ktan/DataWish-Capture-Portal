@@ -264,7 +264,7 @@ export default function ResultPage() {
               />
             </div>
             <div className="rounded-md px-3 py-3 text-center text-sm" style={{ backgroundColor: 'rgba(0,163,224,0.1)', border: '1px solid rgba(0,163,224,0.2)' }}>
-              <p className="font-medium" style={{ color: '#00A3E0' }}>Jing Si Aphorism</p>
+              <p className="font-medium" style={{ color: '#00A3E0' }}>Chinese New Year Blessing</p>
               {data.aphorism.split(" / ").map((line, index) => (
                 <p key={index} className="mt-1 italic" style={{ color: '#6DD5ED' }}>
                   &ldquo;{line}&rdquo;

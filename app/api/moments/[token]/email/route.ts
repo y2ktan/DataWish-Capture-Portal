@@ -69,8 +69,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #005a9c;">Your Memorable Moment</h2>
           <p>Dear ${moment.englishName},</p>
-          <p>Thank you for participating in our event! Your personalized photo with a Jing Si aphorism is ready.</p>
-          <p><strong>Jing Si Aphorism:</strong> "${moment.aphorism}"</p>
+          <p>Thank you for participating in our event! Your personalized photo with a Chinese New Year Blessing is ready.</p>
+          <p><strong>Chinese New Year Blessing:</strong> "${moment.aphorism}"</p>
           <p>Scan the QR code below to view and download your photo:</p>
           <p style="text-align: center; margin: 30px 0;">
             <img src="${qrCodeImageUrl}" alt="QR Code" style="width: 256px; height: 256px; border: 1px solid #ddd; border-radius: 8px;" />

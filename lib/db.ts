@@ -95,7 +95,7 @@ export function getDatabase(): Database.Database {
     db.prepare("INSERT INTO sections (name, displayOrder) VALUES (?, ?)").run("Section 1", 1);
   }
 
-  // Create aphorisms table for bilingual Jing Si aphorisms
+  // Create aphorisms table for bilingual Chinese New Year Blessings
   db.exec(`
     CREATE TABLE IF NOT EXISTS aphorisms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,11 +109,11 @@ export function getDatabase(): Database.Database {
   const aphorismCount = db.prepare("SELECT COUNT(*) as count FROM aphorisms").get() as { count: number };
   if (aphorismCount.count === 0) {
     const defaultAphorisms = [
-      { chinese: "发脾气是短暂的发疯", english: "Giving vent to anger is temporary insanity" },
-      { chinese: "施比受更有福", english: "To give is better than to receive" },
-      { chinese: "甘愿做，欢喜受", english: "Be willing to do, be happy to bear" },
-      { chinese: '人都是求"有"，什么叫"有"呢？"有"就是烦恼', english: 'Everyone seeks "to have". What is "to have"? It is to have worries' },
-      { chinese: "君子如水，随方就圆，无处不自在", english: "A gentleman is like water, which takes the shape of the container into which it flows. He is comfortable in any situation" }
+      { chinese: "新年快乐，万事如意", english: "Happy New Year, may all your wishes come true" },
+      { chinese: "恭喜发财，身体健康", english: "Wishing you prosperity and good health" },
+      { chinese: "龙马精神，福寿双全", english: "May you have the spirit of a dragon and horse, blessed with fortune and longevity" },
+      { chinese: "心想事成，阖家幸福", english: "May your heart's desires come true and your family be blessed with happiness" },
+      { chinese: "吉祥如意，平安喜乐", english: "May you have good fortune and peace, joy and happiness" }
     ];
     const insertStmt = db.prepare("INSERT INTO aphorisms (chinese, english) VALUES (?, ?)");
     for (const aphorism of defaultAphorisms) {

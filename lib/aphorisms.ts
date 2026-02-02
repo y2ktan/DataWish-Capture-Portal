@@ -15,8 +15,8 @@ export function getRandomAphorism(): BilingualAphorism {
   }
   // Fallback if database is empty
   return {
-    chinese: "施比受更有福",
-    english: "To give is better than to receive"
+    chinese: "新年快乐，万事如意",
+    english: "Happy New Year, may all your wishes come true"
   };
 }
 

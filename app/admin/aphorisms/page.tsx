@@ -174,10 +174,10 @@ export default function AphorismsAdminPage() {
           ← Back to Admin
         </Link>
         <h1 className="mt-2 text-center text-2xl font-semibold text-tzuchiBlue">
-          Jing Si Aphorisms
+          Chinese New Year Blessings
         </h1>
         <p className="mt-1 text-center text-sm text-slate-600">
-          Manage bilingual aphorisms displayed on generated images.
+          Manage bilingual blessings displayed on generated images.
         </p>
       </header>
 
@@ -188,9 +188,9 @@ export default function AphorismsAdminPage() {
         </div>
       )}
 
-      {/* Add New Aphorism */}
+      {/* Add New Blessing */}
       <section className="rounded-xl bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-700 mb-3">Add New Aphorism</h2>
+        <h2 className="text-sm font-semibold text-slate-700 mb-3">Add New Blessing</h2>
         <div className="flex flex-col gap-2">
           <input
             type="text"
@@ -210,15 +210,15 @@ export default function AphorismsAdminPage() {
             onClick={handleAdd}
             className="rounded-md bg-tzuchiBlue px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
           >
-            Add Aphorism
+            Add Blessing
           </button>
         </div>
       </section>
 
-      {/* Aphorisms List */}
+      {/* Blessings List */}
       <section className="flex-1 rounded-xl bg-white p-4 shadow-sm overflow-auto">
         <h2 className="text-sm font-semibold text-slate-700 mb-3">
-          All Aphorisms ({aphorisms.length})
+          All Blessings ({aphorisms.length})
         </h2>
         {loading && <p className="text-xs text-slate-500">Loading...</p>}
         <ul className="divide-y divide-slate-100">

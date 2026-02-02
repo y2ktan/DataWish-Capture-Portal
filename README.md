@@ -1,6 +1,6 @@
 # AI-Powered Memorable Moment Capture (MVP)
 
-A Next.js web application that captures user photos at events, processes them with AI background replacement and Jing Si aphorisms, and provides QR code downloads.
+A Next.js web application that captures user photos at events, processes them with AI background replacement and Chinese New Year Blessings, and provides QR code downloads.
 
 ## Features
 
@@ -10,7 +10,7 @@ A Next.js web application that captures user photos at events, processes them wi
   - Switch between cameras with a single tap
   - Real-time camera preview
   - Photo review before submission
-- **AI Processing**: Background replacement with themed assets and Jing Si aphorism overlay
+- **AI Processing**: Background replacement with themed assets and Chinese New Year Blessing overlay
 - **QR Code Generation**: Unique download links via QR codes
 - **Email Delivery**: Send QR code and photo link directly to user's email address
 - **QR Scanner**: Scan QR codes to view moments and navigate to the Spirit Tree
@@ -98,7 +98,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
    - Photo is saved to database
 
 4. **Result Page**:
-   - Displays processed photo with Jing Si aphorism
+   - Displays processed photo with Chinese New Year Blessing
    - Shows QR code for easy download
    - Option to send QR code via email (if email was provided)
 
