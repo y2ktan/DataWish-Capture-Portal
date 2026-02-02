@@ -1,6 +1,7 @@
 import * as chokidar from "chokidar";
 import path from "path";
 import { Section } from "@/models/Section";
+import { Moment } from "@/models/Moment";
 
 // Store active SSE connections per section
 const sectionConnections = new Map<number, Set<ReadableStreamDefaultController>>();
@@ -99,7 +100,7 @@ function broadcastChanges() {
   // Broadcast to global connections (all registered users)
   if (globalConnections.size > 0) {
     try {
-      const allNames = Section.getAllCheckedInNames();
+      const allNames = Moment.getAllRegisteredNames();
       const currentNames = new Set(allNames);
 
       // Find added fireflies
@@ -191,8 +192,8 @@ export function registerGlobalConnection(controller: ReadableStreamDefaultContro
   initWatcher();
   globalConnections.add(controller);
   
-  // Initialize global firefly cache with all checked-in users
-  const names = Section.getAllCheckedInNames();
+  // Initialize global firefly cache with all registered users
+  const names = Moment.getAllRegisteredNames();
   globalFireflies = new Set(names);
   
   console.log(`[SSE] New global connection. Total: ${globalConnections.size}`);
@@ -204,9 +205,9 @@ export function unregisterGlobalConnection(controller: ReadableStreamDefaultCont
   console.log(`[SSE] Global connection closed. Remaining: ${globalConnections.size}`);
 }
 
-// Get initial fireflies for global view (all checked-in users)
+// Get initial fireflies for global view (all registered users)
 export function getInitialFirefliesAll(): string[] {
-  const names = Section.getAllCheckedInNames();
+  const names = Moment.getAllRegisteredNames();
   
   // Update cache
   globalFireflies = new Set(names);

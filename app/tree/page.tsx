@@ -21,7 +21,7 @@ function TreePageInner() {
     const token = searchParams.get("token");
     const pathname = usePathname();
     const [loading, setLoading] = useState(true);
-    const [showReleaseButton, setShowReleaseButton] = useState(!!name && !!section);
+    const [showReleaseButton, setShowReleaseButton] = useState(!!name);
     const [sectionName, setSectionName] = useState<string>("");
     const spawnRef = useRef<(n: string) => void>(() => { });
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
