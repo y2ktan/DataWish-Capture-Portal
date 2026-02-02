@@ -750,14 +750,14 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
         // 2. Load and Light the Pagoda
         loader.load(
-            '/assets/pagoda+3d+model.glb',
+            '/assets/pagoda+3d+night+model.glb',
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
                 // X means forward (positive x is away from camera, so +5 moves it forward)
                 // Y means up (positive y lifts it above the hill)
                 // z means left/right (negative z moves it left, positive z moves it right)
-                pagodaModel.position.set(data.x + 5, hillTopY + 1, data.z);
+                pagodaModel.position.set(data.x + 5, hillTopY + 20, data.z);
                 pagodaModel.scale.set(data.pagodaScale, data.pagodaScale, data.pagodaScale);
 
                 // Make the pagoda glow from within
