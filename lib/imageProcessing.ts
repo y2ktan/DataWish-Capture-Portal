@@ -18,11 +18,19 @@ export interface TextLayoutConfig {
   englishColor: string;
   chineseStrokeColor: string;
   englishStrokeColor: string;
+  signatureLayout?: {
+    x: number;
+    y: number;
+    align: "left" | "right";
+    color: string;
+    strokeColor: string;
+  };
 }
 
 // Output dimensions for consistency
 const OUTPUT_WIDTH = 1080;
 const OUTPUT_HEIGHT = 1080;
+const PADDING = 40; // Padding from edges
 
 // Font paths
 const CHINESE_FONT_PATH = path.join(process.cwd(), "app", "fonts", "FZGLJW.TTF");
@@ -117,10 +125,14 @@ async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
  * Create text overlay image using @napi-rs/canvas with custom fonts
  * @param aphorism The bilingual aphorism to render
  * @param layout Optional layout configuration (if not provided, uses defaults)
+ * @param englishName Optional English name for the signature
+ * @param chineseName Optional Chinese name for the signature
  */
 async function createTextOverlay(
   aphorism: BilingualAphorism,
-  layout?: TextLayoutConfig
+  layout?: TextLayoutConfig,
+  englishName?: string,
+  chineseName?: string
 ): Promise<Buffer> {
   await registerFonts();
   
@@ -128,21 +140,27 @@ async function createTextOverlay(
   const canvas = createCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
   const ctx = canvas.getContext("2d");
   
-  // Font sizes - Significantly increased for visibility
+  // Font sizes
+  const nameFontSize = 50; // Name at top
   const chineseFontSize = 90;
   const englishFontSize = 45;
+  const nameGap = 30; // Gap between Name and Chinese
   const lineSpacing = 25; // Gap between Chinese and English blocks
   const englishLineGap = 10; // Gap between wrapped English lines
   
   // Use layout config or defaults
-  // We treat yOffset as the visual center of the text block
   const centerY = layout?.yOffset ?? Math.floor(OUTPUT_HEIGHT * 0.35);
   const chineseColor = layout?.chineseColor ?? "#8B0000";
   const englishColor = layout?.englishColor ?? "#8B0000";
   const chineseStrokeColor = layout?.chineseStrokeColor ?? "#FFFFFF";
   const englishStrokeColor = layout?.englishStrokeColor ?? "#FFFFFF";
   
-  // 1. Measure English text for wrapping to calculate total height
+  // 1. Prepare Name Text
+  let nameText = "";
+  if (chineseName) nameText = `亲爱的 ${chineseName}`;
+  else if (englishName) nameText = `DEAR ${englishName.toUpperCase()}`; // Uppercase for Herculanum style
+
+  // 2. Measure English text for wrapping
   ctx.font = `${englishFontSize}px Herculanum, serif`;
   const maxWidth = OUTPUT_WIDTH - 120; // 60px padding on each side
   const words = aphorism.english.split(' ');
@@ -163,38 +181,72 @@ async function createTextOverlay(
     lines.push(currentLine);
   }
 
-  // Calculate total height: Chinese height + spacing + (English lines * height) + (English gaps)
-  const totalHeight = chineseFontSize + lineSpacing + (lines.length * englishFontSize) + ((lines.length - 1) * englishLineGap);
+  // Signature settings
+  const sigText = "~ VWORD 2026 ~";
+  const sigFontSize = 28;
+  const sigGap = 20; // Gap between English and Signature
+
+  // 3. Calculate total height
+  // Structure: [Name] + gap + [Chinese] + gap + [English Lines] + gap + [Signature]
+  let totalHeight = chineseFontSize + lineSpacing + (lines.length * englishFontSize) + ((lines.length - 1) * englishLineGap) + sigGap + sigFontSize;
+  
+  if (nameText) {
+    totalHeight += nameFontSize + nameGap;
+  }
   
   // Calculate start Y position to center the block vertically around centerY
-  const startY = centerY - (totalHeight / 2);
+  let currentY = centerY - (totalHeight / 2);
 
-  // 2. Draw Chinese text
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  
+
+  // 4. Draw Name (if exists)
+  if (nameText) {
+    const nameFont = chineseName ? "FZGLJW" : "Herculanum";
+    ctx.font = `${nameFontSize}px ${nameFont}, serif`;
+    ctx.strokeStyle = englishStrokeColor; // Match English style
+    ctx.fillStyle = englishColor;
+    ctx.lineWidth = 6;
+    
+    ctx.strokeText(nameText, OUTPUT_WIDTH / 2, currentY);
+    ctx.fillText(nameText, OUTPUT_WIDTH / 2, currentY);
+    
+    currentY += nameFontSize + nameGap;
+  }
+
+  // 5. Draw Chinese text
   ctx.strokeStyle = chineseStrokeColor;
   ctx.fillStyle = chineseColor;
   ctx.font = `${chineseFontSize}px FZGLJW, serif`;
-  ctx.lineWidth = 8; // Thicker border for larger text
+  ctx.lineWidth = 8;
   
-  const chineseY = startY;
-  ctx.strokeText(aphorism.chinese, OUTPUT_WIDTH / 2, chineseY);
-  ctx.fillText(aphorism.chinese, OUTPUT_WIDTH / 2, chineseY);
+  ctx.strokeText(aphorism.chinese, OUTPUT_WIDTH / 2, currentY);
+  ctx.fillText(aphorism.chinese, OUTPUT_WIDTH / 2, currentY);
   
-  // 3. Draw English text
+  currentY += chineseFontSize + lineSpacing;
+  
+  // 6. Draw English text
   ctx.font = `${englishFontSize}px Herculanum, serif`;
   ctx.lineWidth = 6;
   ctx.strokeStyle = englishStrokeColor;
   ctx.fillStyle = englishColor;
-  
-  let currentY = chineseY + chineseFontSize + lineSpacing;
   
   for (const line of lines) {
     ctx.strokeText(line, OUTPUT_WIDTH / 2, currentY);
     ctx.fillText(line, OUTPUT_WIDTH / 2, currentY);
     currentY += englishFontSize + englishLineGap;
   }
+  
+  // 7. Draw Signature (~ VWORD ~) below the English text
+  currentY += sigGap - englishLineGap; // Adjust for the last englishLineGap added in the loop
+  ctx.textAlign = "center";
+  ctx.font = `${sigFontSize}px Herculanum, serif`;
+  ctx.strokeStyle = englishStrokeColor;
+  ctx.fillStyle = englishColor;
+  ctx.lineWidth = 4;
+  
+  ctx.strokeText(sigText, OUTPUT_WIDTH / 2, currentY);
+  ctx.fillText(sigText, OUTPUT_WIDTH / 2, currentY);
   
   return canvas.toBuffer("image/png");
 }
@@ -206,7 +258,9 @@ async function createTextOverlay(
 async function compositeImage(
   subjectBuffer: Buffer,
   backgroundPath: string,
-  aphorism?: BilingualAphorism
+  aphorism?: BilingualAphorism,
+  englishName?: string,
+  chineseName?: string
 ): Promise<Buffer> {
   const sharp = await getSharp();
 
@@ -235,7 +289,7 @@ async function compositeImage(
     const backgroundBuffer = await background.toBuffer();
     console.log("Analyzing cropped background for optimal text placement...");
     const layout = await analyzeBackgroundLayout(backgroundBuffer);
-    const textOverlay = await createTextOverlay(aphorism, layout);
+    const textOverlay = await createTextOverlay(aphorism, layout, englishName, chineseName);
 
     // 5. Composite Layers
     return await sharp(backgroundBuffer)
@@ -308,7 +362,9 @@ export async function processImageWithAphorism(
   rawImageDataUrl: string | null,
   backgroundUrl?: string,
   skipBackground?: boolean,
-  skipPhoto?: boolean
+  skipPhoto?: boolean,
+  englishName?: string,
+  chineseName?: string
 ): Promise<ProcessedImageResult> {
   const aphorism = getRandomAphorism();
   const aphorismDisplay = `${aphorism.chinese} / ${aphorism.english}`;
@@ -321,7 +377,7 @@ export async function processImageWithAphorism(
       if (!bgPath) {
         throw new Error("No background images available");
       }
-      const finalBuffer = await createBackgroundOnlyImage(bgPath, aphorism);
+      const finalBuffer = await createBackgroundOnlyImage(bgPath, aphorism, englishName, chineseName);
       return {
         finalImageUrl: saveProcessedImage(finalBuffer),
         aphorism: aphorismDisplay,
@@ -339,10 +395,10 @@ export async function processImageWithAphorism(
     if (bgPath) {
       console.log("Processing with background replacement...");
       const subjectBuffer = await removeBackground(imageBuffer);
-      finalBuffer = await compositeImage(subjectBuffer, bgPath, aphorism);
+      finalBuffer = await compositeImage(subjectBuffer, bgPath, aphorism, englishName, chineseName);
     } else {
       console.log("Processing original image with text overlay...");
-      finalBuffer = await applyTextOverlayOnly(imageBuffer, aphorism);
+      finalBuffer = await applyTextOverlayOnly(imageBuffer, aphorism, englishName, chineseName);
     }
 
     return {
@@ -371,7 +427,9 @@ export async function processImageWithAphorism(
  */
 async function createBackgroundOnlyImage(
   backgroundPath: string,
-  aphorism: BilingualAphorism
+  aphorism: BilingualAphorism,
+  englishName?: string,
+  chineseName?: string
 ): Promise<Buffer> {
   const sharp = await getSharp();
 
@@ -392,7 +450,7 @@ async function createBackgroundOnlyImage(
   const layout = await analyzeBackgroundLayout(backgroundBuffer);
 
   // 4. Create text overlay with dynamic layout
-  const textOverlay = await createTextOverlay(aphorism, layout);
+  const textOverlay = await createTextOverlay(aphorism, layout, englishName, chineseName);
 
   // 5. Composite background with text
   // Re-load the buffer into sharp for composition
@@ -407,12 +465,21 @@ function resolveBackgroundPath(backgroundUrl?: string): string | null {
   return targetUrl ? getBackgroundPath(targetUrl) : null;
 }
 
-async function applyTextOverlayOnly(imageBuffer: Buffer, aphorism?: any): Promise<Buffer> {
+async function applyTextOverlayOnly(
+  imageBuffer: Buffer, 
+  aphorism?: any, 
+  englishName?: string, 
+  chineseName?: string
+): Promise<Buffer> {
   const sharp = await getSharp();
   if(aphorism) {
-    const textOverlay = await createTextOverlay(aphorism);
-    return sharp(imageBuffer)
-      .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: "cover", position: "center" })
+    // Analyze original image for layout
+    const sharpImage = sharp(imageBuffer).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: "cover", position: "center" });
+    const resizedBuffer = await sharpImage.toBuffer();
+    const layout = await analyzeBackgroundLayout(resizedBuffer);
+    
+    const textOverlay = await createTextOverlay(aphorism, layout, englishName, chineseName);
+    return sharp(resizedBuffer)
       .composite([{ input: textOverlay, gravity: "northwest" }])
       .jpeg({ quality: 90 })
       .toBuffer();
@@ -541,26 +608,24 @@ async function analyzeBackgroundLayout(input: string | Buffer): Promise<TextLayo
   const width = metadata.width || OUTPUT_WIDTH;
   const height = metadata.height || OUTPUT_HEIGHT;
 
-  // Define candidate regions (Top, Middle, Bottom thirds)
-  const regions = [
+  // Define candidate regions for APHORISM (Top, Middle, Bottom thirds)
+  const aphorismRegions = [
     { name: "top", y: 0, regionHeight: Math.floor(height / 3), yOffsetPercent: 0.15 },
     { name: "middle", y: Math.floor(height / 3), regionHeight: Math.floor(height / 3), yOffsetPercent: 0.45 },
     { name: "bottom", y: Math.floor(height * 2 / 3), regionHeight: Math.floor(height / 3), yOffsetPercent: 0.75 },
   ];
 
-  let bestRegion = regions[0];
+  let bestRegion = aphorismRegions[0];
   let lowestStdev = Infinity;
   let bestRegionLuminance = 0.5;
 
-  for (const region of regions) {
+  for (const region of aphorismRegions) {
     try {
-      // Extract region
       const regionBuffer = await sharp(input)
         .extract({ left: 0, top: region.y, width: width, height: region.regionHeight })
         .toBuffer();
 
       const { stdev, meanLuminance } = await calculateImageStats(regionBuffer);
-
       console.log(`Region ${region.name}: stdev=${stdev.toFixed(4)}, luminance=${meanLuminance.toFixed(2)}`);
 
       if (stdev < lowestStdev) {
@@ -573,29 +638,69 @@ async function analyzeBackgroundLayout(input: string | Buffer): Promise<TextLayo
     }
   }
 
-  console.log(`Best region: ${bestRegion.name} (stdev=${lowestStdev.toFixed(4)}, luminance=${bestRegionLuminance.toFixed(2)})`);
+  console.log(`Best region for Aphorism: ${bestRegion.name}`);
 
   // Determine text colors based on the luminance of the best region
   const isDarkBackground = bestRegionLuminance < 0.5;
-
-  let chineseColor: string;
-  let englishColor: string;
-  let chineseStrokeColor: string;
-  let englishStrokeColor: string;
+  let chineseColor: string, englishColor: string, chineseStrokeColor: string, englishStrokeColor: string;
 
   if (isDarkBackground) {
-    // Light text for dark backgrounds (festive gold/white)
-    chineseColor = "#FFD700";      // Gold
-    englishColor = "#FFFFFF";      // White
-    chineseStrokeColor = "#8B0000"; // Deep Red border
-    englishStrokeColor = "#8B0000"; // Deep Red border
+    chineseColor = "#FFD700"; englishColor = "#FFFFFF"; chineseStrokeColor = "#8B0000"; englishStrokeColor = "#8B0000";
   } else {
-    // Dark text for light backgrounds (deep red)
-    chineseColor = "#8B0000";      // Deep Red
-    englishColor = "#8B0000";      // Deep Red
-    chineseStrokeColor = "#FFFFFF"; // White border
-    englishStrokeColor = "#FFFFFF"; // White border
+    // Light background: Use White Fill with Deep Red Stroke (matching user preference)
+    chineseColor = "#FFFFFF"; 
+    englishColor = "#FFFFFF"; 
+    chineseStrokeColor = "#8B0000"; 
+    englishStrokeColor = "#8B0000"; 
   }
+
+  // Analyze Corners for Name/Signature
+  // Avoid the region chosen for Aphorism
+  const cornerSize = 250;
+  const corners = [
+    { name: "bottom-right", x: width - PADDING, y: height - PADDING - 40, align: "right" as const, regionName: "bottom" },
+    { name: "bottom-left", x: PADDING, y: height - PADDING - 40, align: "left" as const, regionName: "bottom" },
+    { name: "top-right", x: width - PADDING, y: PADDING + 40, align: "right" as const, regionName: "top" },
+    { name: "top-left", x: PADDING, y: PADDING + 40, align: "left" as const, regionName: "top" }
+  ];
+
+  let bestCorner = corners[0]; // Default to bottom-right
+  let lowestCornerStdev = Infinity;
+
+  for (const corner of corners) {
+    // If main text is in this region, skip this corner to avoid overlap
+    if (corner.regionName === bestRegion.name) continue;
+
+    try {
+      const cornerBuffer = await sharp(input)
+        .extract({ 
+           left: corner.align === "left" ? 0 : width - cornerSize, 
+           top: corner.regionName === "top" ? 0 : height - cornerSize, 
+           width: cornerSize, 
+           height: cornerSize 
+        })
+        .toBuffer();
+
+      const { stdev } = await calculateImageStats(cornerBuffer);
+      
+      // Preference logic:
+      // We PREFER bottom-right (index 0). 
+      // We penalize other corners slightly to favor bottom-right unless it's very busy.
+      let penalty = 1.0;
+      if (corner.name !== "bottom-right") penalty = 1.5; 
+      
+      const adjustedStdev = stdev * penalty;
+
+      if (adjustedStdev < lowestCornerStdev) {
+        lowestCornerStdev = adjustedStdev;
+        bestCorner = corner;
+      }
+    } catch (err) {
+      console.warn(`Failed to analyze corner ${corner.name}:`, err);
+    }
+  }
+
+  console.log(`Best corner for Signature: ${bestCorner.name}`);
 
   return {
     yOffset: Math.floor(OUTPUT_HEIGHT * bestRegion.yOffsetPercent),
@@ -603,5 +708,12 @@ async function analyzeBackgroundLayout(input: string | Buffer): Promise<TextLayo
     englishColor,
     chineseStrokeColor,
     englishStrokeColor,
+    signatureLayout: {
+      x: bestCorner.x,
+      y: bestCorner.y,
+      align: bestCorner.align,
+      color: englishColor,
+      strokeColor: englishStrokeColor
+    }
   };
 }

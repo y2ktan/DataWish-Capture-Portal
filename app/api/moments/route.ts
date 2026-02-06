@@ -106,7 +106,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const processed = await processImageWithAphorism(imageDataUrl || null, undefined, skipBackground, skipPhoto);
+    const processed = await processImageWithAphorism(
+      imageDataUrl || null, 
+      undefined, 
+      skipBackground, 
+      skipPhoto,
+      englishName,
+      chineseName
+    );
 
     const downloadToken = crypto.randomBytes(16).toString("hex");
 

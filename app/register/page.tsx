@@ -204,7 +204,7 @@ export default function RegisterPage() {
           <div className="mt-2 p-3 rounded-md text-xs" style={{ backgroundColor: 'rgba(0,163,224,0.05)', border: '1px solid rgba(0,163,224,0.2)', color: 'rgba(109,213,237,0.8)' }}>
             <p>
               <strong style={{ color: '#6DD5ED' }}>Privacy & PDPA Compliance</strong><br />
-              Buddhist Tzu-Chi Merits Society Malaysia respects your privacy. In accordance with the PDPA 2010, all information collected via vword.net is used strictly for internal purposes (donations and volunteer management). We do not share or sell your data. By using this site, you agree to our{" "}
+              VWord respects your privacy. In accordance with the PDPA 2010, all information collected via vword.net is used strictly for internal purposes. We do not share or sell your data. By using this site, you agree to our{" "}
               <Link
                 href="/terms"
                 target="_blank"

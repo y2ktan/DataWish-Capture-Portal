@@ -70,7 +70,8 @@ export default function HomePage() {
       href: "/scan",
       label: "Scan",
       number: 2,
-      icon: <ScanIcon />
+      icon: <ScanIcon />,
+      disabled: true
     },
     {
       href: "/tree",
@@ -119,42 +120,84 @@ export default function HomePage() {
         <p className="text-sm tracking-wider" style={{ color: '#6DD5ED', opacity: 0.8 }}>{HOME_DESCRIPTION}</p>
 
         <div className="mt-10 flex flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-12">
-          {actions.map((action) => (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="group flex flex-col items-center gap-2 focus-visible:outline-none"
-            >
-              <div 
-                className="relative flex h-20 w-20 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(0,102,179,0.2), rgba(0,163,224,0.1))',
-                  boxShadow: '0 0 20px rgba(0,163,224,0.3), inset 0 0 20px rgba(0,163,224,0.1)'
-                }}
-              >
-                {/* Gradient border */}
-                <div 
-                  className="absolute inset-0 rounded-full p-[2px]"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #0066B3, #00A3E0, #6DD5ED)',
-                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                    WebkitMaskComposite: 'xor',
-                    maskComposite: 'exclude'
-                  }}
-                />
-                {action.icon}
-              </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-xs font-semibold" style={{ color: '#6DD5ED' }}>{action.number}.</span>
-                <span 
-                  className="text-sm font-semibold leading-tight tracking-wider"
-                  style={{ color: '#00A3E0' }}
+          {actions.map((action) => {
+            const isDisabled = 'disabled' in action && action.disabled;
+            
+            if (isDisabled) {
+              return (
+                <div
+                  key={action.href}
+                  className="flex flex-col items-center gap-2 cursor-not-allowed opacity-40"
                 >
-                  {action.label}
-                </span>
-              </div>
-            </Link>
-          ))}
+                  <div 
+                    className="relative flex h-20 w-20 items-center justify-center rounded-full"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(100,100,100,0.2), rgba(80,80,80,0.1))',
+                      boxShadow: '0 0 10px rgba(100,100,100,0.2), inset 0 0 10px rgba(100,100,100,0.1)'
+                    }}
+                  >
+                    {/* Grey border */}
+                    <div 
+                      className="absolute inset-0 rounded-full p-[2px]"
+                      style={{ 
+                        background: 'linear-gradient(135deg, #666, #888, #999)',
+                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        WebkitMaskComposite: 'xor',
+                        maskComposite: 'exclude'
+                      }}
+                    />
+                    <div className="grayscale">{action.icon}</div>
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="text-xs font-semibold" style={{ color: '#888' }}>{action.number}.</span>
+                    <span 
+                      className="text-sm font-semibold leading-tight tracking-wider"
+                      style={{ color: '#666' }}
+                    >
+                      {action.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="group flex flex-col items-center gap-2 focus-visible:outline-none"
+              >
+                <div 
+                  className="relative flex h-20 w-20 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,102,179,0.2), rgba(0,163,224,0.1))',
+                    boxShadow: '0 0 20px rgba(0,163,224,0.3), inset 0 0 20px rgba(0,163,224,0.1)'
+                  }}
+                >
+                  {/* Gradient border */}
+                  <div 
+                    className="absolute inset-0 rounded-full p-[2px]"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #0066B3, #00A3E0, #6DD5ED)',
+                      WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                      WebkitMaskComposite: 'xor',
+                      maskComposite: 'exclude'
+                    }}
+                  />
+                  {action.icon}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="text-xs font-semibold" style={{ color: '#6DD5ED' }}>{action.number}.</span>
+                  <span 
+                    className="text-sm font-semibold leading-tight tracking-wider"
+                    style={{ color: '#00A3E0' }}
+                  >
+                    {action.label}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </main>
