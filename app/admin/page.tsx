@@ -393,6 +393,9 @@ export default function AdminPage() {
                   {row.postcode && (
                     <p className="text-xs text-slate-400">Postcode: {row.postcode}</p>
                   )}
+                  {row.email && (
+                    <p className="text-xs text-slate-400">Email: {row.email}</p>
+                  )}
                   {/* Section chips */}
                   {row.sections && row.sections.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -542,6 +545,15 @@ export default function AdminPage() {
                   setEditing({ ...editing, postcode: e.target.value })
                 }
                 placeholder="Postcode"
+              />
+              <input
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-tzuchiBlue focus:outline-none focus:ring-1 focus:ring-tzuchiBlue"
+                value={editing.email ?? ""}
+                onChange={(e) =>
+                  setEditing({ ...editing, email: e.target.value })
+                }
+                placeholder="Email"
+                type="email"
               />
             </div>
             <div className="mt-4 flex justify-end gap-2">
