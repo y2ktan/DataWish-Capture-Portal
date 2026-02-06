@@ -130,7 +130,7 @@ function TreePageInner() {
 });
 
 
-        const FIREFLY_LIMIT = 100;
+        const FIREFLY_LIMIT = 80;
         
         const spawnFirefly = (targetName: string) => {
             // Remove oldest firefly if limit reached
@@ -154,8 +154,15 @@ function TreePageInner() {
 
             if (labelsRef.current) labelsRef.current.appendChild(labelDiv);
             
-            // Spawn new firefly in visible area (positive X, front of camera)
-            group.position.set(25 + Math.random() * 25, 15 + Math.random() * 20, 5 + Math.random() * 15);
+            // Spawn new firefly in random position around the tree
+            const spawnAngle = Math.random() * Math.PI * 2;
+            const spawnRadius = 30 + Math.random() * 20;
+            const spawnY = 15 + Math.random() * 20;
+            group.position.set(
+                Math.cos(spawnAngle) * spawnRadius, 
+                spawnY, 
+                Math.sin(spawnAngle) * spawnRadius
+            );
 
             const ff = {
                 obj: group,
@@ -274,6 +281,39 @@ function TreePageInner() {
                 if (state === 'FLYING') {
                     _dir.subVectors(ff.target, pos).normalize();
                     
+                    // SEPARATION LOGIC: Gently push away from other fireflies
+                    const separationRadius = 4;
+                    const sepForce = new THREE.Vector3();
+                    let neighbors = 0;
+                    
+                    // Check a few random neighbors instead of all (optimization)
+                    const checkCount = Math.min(5, fireflies.length);
+                    for (let n = 0; n < checkCount; n++) {
+                        const otherIdx = (i + n + 1) % fireflies.length;
+                        if (otherIdx === i) continue;
+                        
+                        const other = fireflies[otherIdx];
+                        const dx = pos.x - other.obj.position.x;
+                        const dy = pos.y - other.obj.position.y;
+                        const dz = pos.z - other.obj.position.z;
+                        const distSq = dx*dx + dy*dy + dz*dz;
+                        
+                        if (distSq < separationRadius * separationRadius && distSq > 0.1) {
+                            const dist = Math.sqrt(distSq);
+                            // Force inversely proportional to distance
+                            sepForce.x += dx / dist;
+                            sepForce.y += dy / dist;
+                            sepForce.z += dz / dist;
+                            neighbors++;
+                        }
+                    }
+                    
+                    if (neighbors > 0) {
+                        sepForce.divideScalar(neighbors);
+                        // Blend separation force into direction (20% separation, 80% target)
+                        _dir.add(sepForce.multiplyScalar(0.4)).normalize();
+                    }
+
                     // Stuck detection (squared distance)
                     if (!ff._lastPos) ff._lastPos = pos.clone();
                     if (!ff._stuckFrames) ff._stuckFrames = 0;
@@ -291,8 +331,8 @@ function TreePageInner() {
                     }
                     ff._lastPos.copy(pos);
                     
-                    // Add wobble
-                    const wt = time + ff.blinkOffset;
+                    // Add wobble with randomized phase per firefly
+                    const wt = time + ff.blinkOffset + (i * 0.1);
                     _dir.x += Math.sin(wt * 2) * 0.5;
                     _dir.y += Math.cos(wt * 1.5) * 0.5;
                     _dir.z += Math.sin(wt * 2.5) * 0.5;

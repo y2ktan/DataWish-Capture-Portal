@@ -1198,9 +1198,9 @@ export function setRandomFlightTarget(ff: any) {
     // Try up to 3 times to find a target far enough away
     do {
         if (rand < 0.25) {
-            // ZONE 1: NEAR CAMERA (High Radius) - 25%
+            // ZONE 1: WIDE ORBIT (High Radius) - 25%
             const r = 60 + Math.random() * 30;
-            const theta = (Math.random() - 0.5) * Math.PI; 
+            const theta = Math.random() * Math.PI * 2; 
             const y = 10 + Math.random() * 30;
             ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
         } else if (rand < 0.50) {
