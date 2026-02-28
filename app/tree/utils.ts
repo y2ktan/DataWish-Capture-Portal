@@ -750,14 +750,14 @@ export function createHillocksAndPagoda(scene: THREE.Scene) {
 
         // 2. Load and Light the Pagoda
         loader.load(
-            '/assets/pagoda+3d+night+model.glb',
+            '/assets/traditional+temple+3d+model2.glb',
             (gltf) => {
                 const pagodaModel = gltf.scene.clone();
                 pagodaModel.name = `pagoda_${index}`;
                 // X means forward (positive x is away from camera, so +5 moves it forward)
                 // Y means up (positive y lifts it above the hill)
                 // z means left/right (negative z moves it left, positive z moves it right)
-                pagodaModel.position.set(data.x + 5, hillTopY + 20, data.z);
+                pagodaModel.position.set(data.x + 5, hillTopY, data.z);
                 pagodaModel.scale.set(data.pagodaScale, data.pagodaScale, data.pagodaScale);
 
                 // Make the pagoda glow from within
@@ -1197,39 +1197,51 @@ export function setRandomFlightTarget(ff: any) {
     
     // Try up to 3 times to find a target far enough away
     do {
-        if (rand < 0.25) {
-            // ZONE 1: WIDE ORBIT (High Radius) - 25%
-            const r = 60 + Math.random() * 30;
+        if (rand < 0.20) {
+            // ZONE 1: WIDE ORBIT (High Radius) - 20%
+            const r = 40 + Math.random() * 60;  // 40-100 units
             const theta = Math.random() * Math.PI * 2; 
-            const y = 10 + Math.random() * 30;
+            const y = 5 + Math.random() * 45;     // 5-50 units high
             ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
-        } else if (rand < 0.50) {
-            // ZONE 2: ABOVE TREE (High Altitude) - 25%
-            const r = Math.random() * 20;
+        } else if (rand < 0.35) {
+            // ZONE 2: ABOVE TREE (High Altitude) - 15%
+            const r = Math.random() * 30;
             const theta = Math.random() * Math.PI * 2;
-            const y = 50 + Math.random() * 30;
+            const y = 40 + Math.random() * 40;   // 40-80 units high
             ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
-        } else if (rand < 0.70) {
-            // ZONE 4: NEAR HILLOCK (around pagoda area) - 20%
-            const r = 5 + Math.random() * 20;  // 5-25 units from hillock center
+        } else if (rand < 0.50) {
+            // ZONE 4: NEAR HILLOCK (around pagoda area) - 15%
+            const r = 5 + Math.random() * 30;    // 5-35 units from hillock
             const theta = Math.random() * Math.PI * 2;
-            const y = 5 + Math.random() * 20;  // Low to mid height near hillock
+            const y = 5 + Math.random() * 25;    // 5-30 units high
             ff.target.set(hillockX + Math.cos(theta) * r, y, hillockZ + Math.sin(theta) * r);
+        } else if (rand < 0.65) {
+            // ZONE 5: FAR SCENE EDGES - 15%
+            const r = 80 + Math.random() * 40;   // 80-120 units
+            const theta = Math.random() * Math.PI * 2;
+            const y = 10 + Math.random() * 30;   // 10-40 units high
+            ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
+        } else if (rand < 0.80) {
+            // ZONE 6: WATER SURFACE AREA - 15%
+            const r = 20 + Math.random() * 50;   // 20-70 units
+            const theta = Math.random() * Math.PI * 2;
+            const y = 2 + Math.random() * 8;      // 2-10 units (near water)
+            ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
         } else {
-            // ZONE 3: STANDARD TREE AREA (Canopy & Trunk)
-            const r = 5 + Math.random() * 15; // Minimum 5 radius
+            // ZONE 3: STANDARD TREE AREA (Canopy & Trunk) - 20%
+            const r = 5 + Math.random() * 20;    // 5-25 units
             const theta = Math.random() * Math.PI * 2;
             
             let y;
-            if (Math.random() > 0.3) {
-                y = 15 + Math.random() * 30; // Canopy
-            } else {
-                y = 5 + Math.random() * 10; // Trunk
+            if (Math.random() > 0.4) {           // 60% canopy
+                y = 15 + Math.random() * 30;
+            } else {                              // 40% trunk
+                y = 5 + Math.random() * 10;
             }
             ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
         }
         attempts++;
-    } while (ff.obj && ff.target.distanceTo(currentPos) < 15 && attempts < 3); // Enforce min travel distance
+    } while (ff.obj && ff.target.distanceTo(currentPos) < 20 && attempts < 3); // Increased min travel distance
 
     ff.state = 'FLYING';
 }
@@ -1273,7 +1285,7 @@ export function setPerchTarget(
     perchPoints: THREE.Vector3[],
     allFireflies?: { state: string, obj?: THREE.Object3D }[]
 ) {
-    const treeTopFireflyPercentage = 0.1;
+    const treeTopFireflyPercentage = 0.3; // Increased from 0.1 to allow more variety
 
     if (perchPoints.length === 0) {
         setRandomFlightTarget(ff as any);
@@ -1282,12 +1294,15 @@ export function setPerchTarget(
 
     let candidates = perchPoints;
     
-    // Prefer perch points on positive X-axis (visible from camera at Azimuth ~105°)
-    const positiveXPoints = perchPoints.filter(p => p.x > 20);
-    if (positiveXPoints.length > 0) {
-        candidates = positiveXPoints;
+    // Reduce bias for positive X-axis - allow more variety
+    if (Math.random() > 0.5) { // 50% chance to consider all points vs 100% before
+        const positiveXPoints = perchPoints.filter(p => p.x > 20);
+        if (positiveXPoints.length > 0) {
+            candidates = positiveXPoints;
+        }
     }
     
+    // More balanced height distribution
     if (Math.random() > treeTopFireflyPercentage) {
         const lowerPoints = candidates.filter(p => p.y < 35);
         if (lowerPoints.length > 0) candidates = lowerPoints;
@@ -1301,8 +1316,8 @@ export function setPerchTarget(
 
     const pt = candidates[Math.floor(Math.random() * candidates.length)];
     ff.target.copy(pt);
-    ff.target.x += (Math.random() - 0.5);
-    ff.target.z += (Math.random() - 0.5);
+    ff.target.x += (Math.random() - 0.5) * 2; // Increased random offset
+    ff.target.z += (Math.random() - 0.5) * 2; // Increased random offset
     ff.target.y += 0.5;
     
     // Mark this cell as occupied

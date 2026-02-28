@@ -128,6 +128,23 @@ export function listBackgrounds(): BackgroundAsset[] {
   
   return files
     .filter((file) => /\.(jpg|jpeg|png)$/i.test(file))
+    .filter((file) => {
+      const filePath = path.join(BACKGROUNDS_DIR, file);
+      try {
+        const stats = fs.statSync(filePath);
+        if (stats.size === 0) return false;
+        // Check for valid image header bytes (JPEG: FF D8, PNG: 89 50)
+        const fd = fs.openSync(filePath, "r");
+        const header = Buffer.alloc(4);
+        fs.readSync(fd, header, 0, 4, 0);
+        fs.closeSync(fd);
+        const isJPEG = header[0] === 0xFF && header[1] === 0xD8;
+        const isPNG = header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47;
+        return isJPEG || isPNG;
+      } catch {
+        return false;
+      }
+    })
     .map((filename) => {
       const filePath = path.join(BACKGROUNDS_DIR, filename);
       const stats = fs.statSync(filePath);

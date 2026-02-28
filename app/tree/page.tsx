@@ -154,14 +154,19 @@ function TreePageInner() {
 
             if (labelsRef.current) labelsRef.current.appendChild(labelDiv);
             
-            // Spawn new firefly in random position around the tree
+            // Spawn new firefly in wider random position around the scene
             const spawnAngle = Math.random() * Math.PI * 2;
-            const spawnRadius = 30 + Math.random() * 20;
-            const spawnY = 15 + Math.random() * 20;
+            const spawnRadius = 20 + Math.random() * 80;  // 20-100 units (wider range)
+            const spawnY = 5 + Math.random() * 45;       // 5-50 units high (wider vertical range)
+            
+            // Add some offset from center for more variety
+            const offsetX = (Math.random() - 0.5) * 40;
+            const offsetZ = (Math.random() - 0.5) * 40;
+            
             group.position.set(
-                Math.cos(spawnAngle) * spawnRadius, 
+                Math.cos(spawnAngle) * spawnRadius + offsetX, 
                 spawnY, 
-                Math.sin(spawnAngle) * spawnRadius
+                Math.sin(spawnAngle) * spawnRadius + offsetZ
             );
 
             const ff = {
