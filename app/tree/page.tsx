@@ -154,8 +154,18 @@ function TreePageInner() {
 
             if (labelsRef.current) labelsRef.current.appendChild(labelDiv);
             
-            // Spawn new firefly in visible area (positive X, front of camera)
-            group.position.set(25 + Math.random() * 25, 15 + Math.random() * 20, 5 + Math.random() * 15);
+            // Spawn new firefly with expanded area and random offsets
+            const spawnRadius = 20 + Math.random() * 80; // 20-100 units
+            const spawnHeight = 5 + Math.random() * 45; // 5-50 units
+            const spawnAngle = Math.random() * Math.PI * 2;
+            const randomOffsetX = (Math.random() - 0.5) * 20; // ±10 units offset
+            const randomOffsetZ = (Math.random() - 0.5) * 20; // ±10 units offset
+            
+            group.position.set(
+                Math.cos(spawnAngle) * spawnRadius + randomOffsetX, 
+                spawnHeight, 
+                Math.sin(spawnAngle) * spawnRadius + randomOffsetZ
+            );
 
             const ff = {
                 obj: group,

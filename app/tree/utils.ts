@@ -1197,27 +1197,39 @@ export function setRandomFlightTarget(ff: any) {
     
     // Try up to 3 times to find a target far enough away
     do {
-        if (rand < 0.25) {
-            // ZONE 1: NEAR CAMERA (High Radius) - 25%
-            const r = 60 + Math.random() * 30;
-            const theta = (Math.random() - 0.5) * Math.PI; 
-            const y = 10 + Math.random() * 30;
-            ff.target.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
-        } else if (rand < 0.50) {
-            // ZONE 2: ABOVE TREE (High Altitude) - 25%
-            const r = Math.random() * 20;
+        if (rand < 0.20) {
+            // ZONE 1: WIDE ORBIT - 20%
+            const r = 40 + Math.random() * 60; // 40-100 units
             const theta = Math.random() * Math.PI * 2;
-            const y = 50 + Math.random() * 30;
+            const y = 10 + Math.random() * 40; // 10-50 units height
             ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
-        } else if (rand < 0.70) {
-            // ZONE 4: NEAR HILLOCK (around pagoda area) - 20%
-            const r = 5 + Math.random() * 20;  // 5-25 units from hillock center
+        } else if (rand < 0.35) {
+            // ZONE 2: ABOVE TREE - 15%
+            const r = Math.random() * 30; // 0-30 units from tree center
             const theta = Math.random() * Math.PI * 2;
-            const y = 5 + Math.random() * 20;  // Low to mid height near hillock
+            const y = 40 + Math.random() * 40; // 40-80 units high
+            ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+        } else if (rand < 0.50) {
+            // ZONE 3: NEAR HILLOCK - 15%
+            const r = 5 + Math.random() * 30; // 5-35 units from hillock center
+            const theta = Math.random() * Math.PI * 2;
+            const y = 5 + Math.random() * 30; // 5-35 units height
             ff.target.set(hillockX + Math.cos(theta) * r, y, hillockZ + Math.sin(theta) * r);
+        } else if (rand < 0.65) {
+            // ZONE 4: FAR SCENE EDGES - 15% (NEW)
+            const r = 80 + Math.random() * 40; // 80-120 units
+            const theta = Math.random() * Math.PI * 2;
+            const y = 5 + Math.random() * 45; // 5-50 units height
+            ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+        } else if (rand < 0.80) {
+            // ZONE 5: WATER SURFACE - 15% (NEW)
+            const r = 20 + Math.random() * 80; // 20-100 units from center
+            const theta = Math.random() * Math.PI * 2;
+            const y = 2 + Math.random() * 8; // 2-10 units high (water surface level)
+            ff.target.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
         } else {
-            // ZONE 3: STANDARD TREE AREA (Canopy & Trunk)
-            const r = 5 + Math.random() * 15; // Minimum 5 radius
+            // ZONE 6: TREE AREA - 20% (reduced from 30%)
+            const r = 5 + Math.random() * 15; // 5-20 units from tree
             const theta = Math.random() * Math.PI * 2;
             
             let y;
@@ -1273,7 +1285,7 @@ export function setPerchTarget(
     perchPoints: THREE.Vector3[],
     allFireflies?: { state: string, obj?: THREE.Object3D }[]
 ) {
-    const treeTopFireflyPercentage = 0.1;
+    const treeTopFireflyPercentage = 0.3; // Updated from 0.1 to 0.3 for more height variety
 
     if (perchPoints.length === 0) {
         setRandomFlightTarget(ff as any);
@@ -1282,10 +1294,12 @@ export function setPerchTarget(
 
     let candidates = perchPoints;
     
-    // Prefer perch points on positive X-axis (visible from camera at Azimuth ~105°)
-    const positiveXPoints = perchPoints.filter(p => p.x > 20);
-    if (positiveXPoints.length > 0) {
-        candidates = positiveXPoints;
+    // Reduce bias: Only prefer positive X-axis points 50% of the time (instead of 100%)
+    if (Math.random() < 0.5) {
+        const positiveXPoints = perchPoints.filter(p => p.x > 20);
+        if (positiveXPoints.length > 0) {
+            candidates = positiveXPoints;
+        }
     }
     
     if (Math.random() > treeTopFireflyPercentage) {
@@ -1301,9 +1315,11 @@ export function setPerchTarget(
 
     const pt = candidates[Math.floor(Math.random() * candidates.length)];
     ff.target.copy(pt);
-    ff.target.x += (Math.random() - 0.5);
-    ff.target.z += (Math.random() - 0.5);
-    ff.target.y += 0.5;
+    
+    // Increased random offsets for more variety (±2 units instead of ±0.5)
+    ff.target.x += (Math.random() - 0.5) * 4; // ±2 units
+    ff.target.z += (Math.random() - 0.5) * 4; // ±2 units
+    ff.target.y += Math.random() * 1.5; // 0-1.5 units up
     
     // Mark this cell as occupied
     markPerchOccupied(ff.target);
