@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath: '/fireflyregister',
+  assetPrefix: '/fireflyregister',
   output: "standalone",
   images: {
     remotePatterns: [
